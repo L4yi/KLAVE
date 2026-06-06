@@ -39,7 +39,7 @@
 
   onAuthStateChanged(auth, user => {
     window._currentUser = user && user.emailVerified ? user : null;
-    updateNav(window._currentUser);
+    if(typeof updateNav === 'function') updateNav(window._currentUser);
   });
 
   async function loadBeats(){
@@ -715,15 +715,21 @@ let playing=false,cur=null,prog=0,tmr=null,nopen=false,curFilter='all',curSearch
 // ── NAV ──
 function updateNav(user){
   const nr=document.getElementById('nav-right');
+  const neroInput=document.getElementById('nero-input-area');
+  const neroGate=document.getElementById('nero-gate-area');
+  const neroMsg=document.getElementById('nmsgs');
   if(user){
     nr.innerHTML=`<span class="nav-user">${user.email.split('@')[0]}</span><button class="nbtn nbtn-o" onclick="doSignOut()">Sign Out</button>`;
-    // show nero input
-    document.getElementById('nero-input-area').style.display='block';
-    document.getElementById('nero-gate-area').style.display='none';
+    if(neroInput) neroInput.style.display='block';
+    if(neroGate) neroGate.style.display='none';
+    // update nero welcome message
+    if(neroMsg && neroMsg.children.length===1){
+      neroMsg.innerHTML=`<div class="msg mn"><div class="ml">NERO</div>Hey ${user.email.split('@')[0]} — ask me about your beat's target audience, pricing, or where to post.</div>`;
+    }
   } else {
     nr.innerHTML=`<button class="nbtn nbtn-o" onclick="go('auth')">Log In</button><button class="nbtn nbtn-f" onclick="go('auth')">Sign Up</button>`;
-    document.getElementById('nero-input-area').style.display='none';
-    document.getElementById('nero-gate-area').style.display='block';
+    if(neroInput) neroInput.style.display='none';
+    if(neroGate) neroGate.style.display='block';
   }
 }
 
@@ -969,9 +975,17 @@ async function sendN(){
   const td=document.createElement('div');td.className='msg mn';
   td.innerHTML=`<div class="ml">NERO</div><div class="ty"><div class="td"></div><div class="td"></div><div class="td"></div></div>`;
   ms.appendChild(td);ms.scrollTop=ms.scrollHeight;
-  // NOTE: Anthropic API requires a backend proxy — CORS blocks direct browser calls.
-  // Replace this URL with your proxy endpoint when ready.
-  td.innerHTML=`<div class="ml">NERO</div>NERO needs a backend proxy to work. We'll wire that up in the next step.`;
+  try {
+    const r = await fetch('https://nero-sandy.vercel.app/api/nero', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [{ role: 'user', content: txt }] })
+    });
+    const data = await r.json();
+    td.innerHTML = `<div class="ml">NERO</div>${data.content?.[0]?.text || 'Something went wrong.'}`;
+  } catch(e) {
+    td.innerHTML = `<div class="ml">NERO</div>Connection error. Try again.`;
+  }
   ms.scrollTop=ms.scrollHeight;
 }
 
@@ -982,7 +996,11 @@ function toast(m){
 }
 
 // ── INIT ──
-renderGrid(beats);renderDash();buildWave();
+document.addEventListener('DOMContentLoaded', function(){
+  renderGrid(beats);
+  renderDash();
+  buildWave();
+});
 </script>
 </body>
-  </html>
+</html>
