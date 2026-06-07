@@ -11,7 +11,7 @@ export default async function handler(req, res) {
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5',
       max_tokens: 1000,
       system: 'You are NERO, an AI inside KLAVE, a beat marketplace. Help producers with target audience, pricing, platforms, and marketing. Be direct and concise. Max 90 words.',
       messages
