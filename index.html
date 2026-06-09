@@ -342,6 +342,11 @@ option{background:var(--bg3);}
 .pub-btn:active{background:var(--blue2);}
 .pub-btn:disabled{opacity:.5;cursor:not-allowed;}
 
+.upload-progress{margin-bottom:16px;display:none;}
+.up-label{display:flex;justify-content:space-between;font-family:var(--M);font-size:9px;color:var(--muted2);letter-spacing:1px;margin-bottom:8px;}
+.up-bar{height:3px;background:var(--grey2);overflow:hidden;}
+.up-fill{height:100%;background:var(--blue);width:0%;transition:width .3s ease;box-shadow:0 0 8px var(--blueglow);}
+
 /* ── PROFILE SCREEN ── */
 .profile-wrap{padding:20px;}
 .prof-banner{
@@ -582,6 +587,13 @@ option{background:var(--bg3);}
         <div class="fg"><label class="fl">Exclusive ($)</label><input class="fi" id="up-excl" type="number" placeholder="300"/></div>
       </div>
 
+      <div class="upload-progress" id="upload-progress">
+        <div class="up-label">
+          <span id="up-status">UPLOADING...</span>
+          <span id="up-pct">0%</span>
+        </div>
+        <div class="up-bar"><div class="up-fill" id="up-fill"></div></div>
+      </div>
       <button class="pub-btn" id="pub-btn" onclick="publishBeat()">PUBLISH BEAT</button>
     </div>
   </div>
@@ -959,17 +971,48 @@ async function publishBeat(){
 
   try{
     // Upload to Cloudinary
-    const fd=new FormData();
-    fd.append('file',audioFile);
-    fd.append('upload_preset','klave_beats');
-    fd.append('resource_type','video');
+    // show progress bar
+    const progressWrap=document.getElementById('upload-progress');
+    const upFill=document.getElementById('up-fill');
+    const upPct=document.getElementById('up-pct');
+    const upStatus=document.getElementById('up-status');
+    progressWrap.style.display='block';
 
-    const cr=await fetch('https://api.cloudinary.com/v1_1/dcajo9jib/video/upload',{method:'POST',body:fd});
-    const cd=await cr.json();
+    // Upload with XHR for progress tracking
+    const cd = await new Promise((resolve, reject) => {
+      const fd=new FormData();
+      fd.append('file',audioFile);
+      fd.append('upload_preset','klave_beats');
+      fd.append('resource_type','video');
 
-    if(!cd.secure_url){toast('Audio upload failed');btn.textContent='PUBLISH BEAT';btn.disabled=false;return;}
+      const xhr=new XMLHttpRequest();
+      xhr.open('POST','https://api.cloudinary.com/v1_1/dcajo9jib/video/upload');
 
-    btn.textContent='SAVING...';
+      xhr.upload.onprogress=e=>{
+        if(e.lengthComputable){
+          const pct=Math.round((e.loaded/e.total)*100);
+          upFill.style.width=pct+'%';
+          upPct.textContent=pct+'%';
+          upStatus.textContent=pct<100?'UPLOADING AUDIO...':'PROCESSING...';
+        }
+      };
+
+      xhr.onload=()=>{
+        try{ resolve(JSON.parse(xhr.responseText)); }
+        catch(e){ reject(e); }
+      };
+      xhr.onerror=()=>reject(new Error('Upload failed'));
+      xhr.send(fd);
+    });
+
+    if(!cd.secure_url){
+      progressWrap.style.display='none';
+      toast('Audio upload failed');
+      btn.textContent='PUBLISH BEAT';btn.disabled=false;return;
+    }
+
+    upStatus.textContent='SAVING BEAT...';
+    upFill.style.width='100%';
 
     await window._addDoc(window._collection(window._db,'beats'),{
       title:title.toUpperCase(),bpm:Number(bpm)||0,key,
@@ -987,6 +1030,8 @@ async function publishBeat(){
     document.getElementById('uh-fname').textContent='';
     document.getElementById('upload-hero').classList.remove('has-file');
     document.getElementById('nero-analyze').style.display='none';
+    document.getElementById('upload-progress').style.display='none';
+    document.getElementById('up-fill').style.width='0%';
     document.getElementById('up-title').value='';
     document.getElementById('up-bpm').value='';
     document.getElementById('up-price').value='';
