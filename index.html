@@ -34,7 +34,7 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
   import { getFirestore, collection, addDoc, getDocs, setDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
   const app = initializeApp({
@@ -50,6 +50,8 @@
   const db = getFirestore(app);
 
   window._auth=auth; window._db=db;
+  window._googleProvider=new GoogleAuthProvider();
+  window._signInWithPopup=signInWithPopup;
   window._createUser=createUserWithEmailAndPassword;
   window._signIn=signInWithEmailAndPassword;
   window._signOut=signOut;
@@ -706,6 +708,22 @@ option{background:var(--bg3);}
 .admin-bar.on{display:flex;}
 .admin-bar-left{display:flex;align-items:center;gap:8px;}
 .admin-dot{width:5px;height:5px;background:var(--blue);border-radius:50%;animation:pulse 1.5s infinite;}
+
+/* Google Sign-In Button */
+.google-btn{
+  width:100%;padding:13px;margin-bottom:14px;
+  background:var(--bg3);border:1px solid var(--grey2);
+  color:var(--white);font-family:var(--H);font-size:14px;font-weight:600;
+  letter-spacing:1px;cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.google-btn:active{border-color:var(--blue);background:var(--bluefade);}
+.google-btn svg{width:18px;height:18px;flex-shrink:0;}
+.auth-or{
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+  font-family:var(--M);font-size:9px;color:var(--muted);letter-spacing:1px;
+}
+.auth-or::before,.auth-or::after{content:'';flex:1;height:1px;background:var(--grey);}
 </style>
 </head>
 <body>
@@ -1079,6 +1097,16 @@ option{background:var(--bg3);}
           <div class="fg"><label class="fl">Password</label><input class="fi" id="a-pass" type="password" placeholder="••••••••"/></div>
           <div class="auth-err" id="auth-err"></div>
           <button class="pub-btn" id="auth-btn" onclick="doAuth()" style="margin-top:4px;">ENTER</button>
+          <div class="auth-or">OR</div>
+          <button class="google-btn" onclick="doGoogleAuth()">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            CONTINUE WITH GOOGLE
+          </button>
         </div>
         <div id="verify-wrap" style="display:none">
           <div class="verify-box">
@@ -1702,6 +1730,40 @@ async function resendVerify(){
   }catch(e){toast('Could not resend. Try again.');}
   btn.textContent='RESEND EMAIL';btn.disabled=false;
 }
+async function doGoogleAuth(){
+  clearErr();
+  try{
+    const {getAuth, GoogleAuthProvider, signInWithPopup} = await import('https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js');
+    const auth = window._auth || getAuth();
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({prompt:'select_account'});
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    // Save user to Firestore if new
+    if(window._db){
+      await window._setDoc(window._doc(window._db,'users',user.uid),{
+        email:user.email,
+        displayName:user.displayName||'',
+        role:'producer',
+        photoURL:user.photoURL||'',
+        createdAt:window._ts()
+      },{merge:true});
+    }
+    toast('Welcome to KLAVE ✓');
+    setTimeout(()=>{
+      if(isAdmin(window._currentUser)) navTo('analytics');
+      else navTo('home');
+    },800);
+  }catch(err){
+    if(err.code==='auth/popup-closed-by-user') return;
+    if(err.code==='auth/popup-blocked'){
+      showErr('Popup blocked. Allow popups for this site.');return;
+    }
+    showErr('Google sign-in failed. Try again.');
+    console.error(err);
+  }
+}
+
 async function doAuth(){
   clearErr();
   const email=document.getElementById('a-email').value.trim();
@@ -1788,81 +1850,4 @@ async function sendNero(){
   const txt=inp.value.trim();if(!txt)return;
   inp.value='';
   const msgs=document.getElementById('np-msgs');
-  const ud=document.createElement('div');ud.className='nm nm-u';ud.textContent=txt;msgs.appendChild(ud);
-  const td=document.createElement('div');td.className='nm nm-n';
-  td.innerHTML=`<div class="nml">NERO</div><div class="na-loading"><div class="na-dot"></div><div class="na-dot"></div><div class="na-dot"></div></div>`;
-  msgs.appendChild(td);msgs.scrollTop=msgs.scrollHeight;
-  try{
-    const r=await fetch('/api/nero',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:txt}]})});
-    const data=await r.json();
-    if(data.error) td.innerHTML=`<div class="nml">NERO</div>Error: ${data.error}`;
-    else td.innerHTML=`<div class="nml">NERO</div>${data.content?.[0]?.text||'No response.'}`;
-  }catch(e){td.innerHTML=`<div class="nml">NERO</div>Error: ${e.message}`;}
-  msgs.scrollTop=msgs.scrollHeight;
-}
-
-// ── TOAST ──
-function toast(m){
-  const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');
-  setTimeout(()=>t.classList.remove('on'),2600);
-}
-
-// ── PWA ──
-window._deferredPrompt=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window._deferredPrompt=e;});
-if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
-
-// ── DRAG & DROP ──
-const uh=document.getElementById('upload-hero');
-uh.addEventListener('dragover',e=>{e.preventDefault();uh.classList.add('has-file');});
-uh.addEventListener('dragleave',()=>uh.classList.remove('has-file'));
-uh.addEventListener('drop',e=>{
-  e.preventDefault();const f=e.dataTransfer.files[0];
-  if(f){document.getElementById('af').files=e.dataTransfer.files;onFileSelect(document.getElementById('af'));}
-});
-
-// ── INIT ──
-document.addEventListener('DOMContentLoaded',()=>{
-  buildWave();renderHome();renderSearch();
-});
-
-
-// Triple tap logo = go to admin analytics
-let _logoTaps=0,_logoTimer=null;
-function adminLogoTap(){
-  _logoTaps++;
-  clearTimeout(_logoTimer);
-  _logoTimer=setTimeout(()=>{ _logoTaps=0; },500);
-  if(_logoTaps>=3 && isAdmin()){
-    _logoTaps=0;
-    navTo('analytics');
-    toast('Admin panel ✓');
-  }
-}
-
-// ── SPLASH ──
-(function(){
-  const pct=document.getElementById('sp-pct');
-  const splash=document.getElementById('splash');
-  const targets=[
-    {t:2000,val:0},{t:2960,val:45},{t:3680,val:72},{t:4040,val:89},{t:4400,val:100}
-  ];
-  let i=0;
-  function tick(){
-    if(i>=targets.length-1) return;
-    const from=targets[i];const to=targets[i+1];
-    const duration=to.t-from.t;
-    function step(now){
-      if(!step.start) step.start=now;
-      const p=Math.min((now-step.start)/duration,1);
-      if(pct) pct.textContent=Math.round(from.val+(to.val-from.val)*p)+'%';
-      if(p<1) requestAnimationFrame(step);
-      else{i++;tick();}
-    }
-    setTimeout(()=>requestAnimationFrame(step),from.t-targets[0].t);
-    i++;
-  }
-  tick();
-  // dismiss after load completes (~4.6s)
-  setTimeout(()=>{
-    if(splash){splash.classLi
+  const ud=document.create
