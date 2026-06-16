@@ -675,22 +675,6 @@ option{background:var(--bg3);}
 }
 
 /* ── ADMIN MODE ── */
-.admin-badge{
-  display:inline-block;
-  font-family:var(--M);font-size:7px;letter-spacing:2px;text-transform:uppercase;
-  padding:2px 6px;background:var(--blue);color:#fff;
-  margin-left:6px;vertical-align:middle;
-}
-.admin-bar{
-  background:var(--bluefade);border-bottom:1px solid var(--blue);
-  padding:6px 20px;display:none;
-  font-family:var(--M);font-size:9px;color:var(--blue);letter-spacing:1px;
-  display:flex;align-items:center;justify-content:space-between;
-}
-.admin-bar.on{display:flex;}
-.admin-bar-left{display:flex;align-items:center;gap:8px;}
-.admin-bar-dot{width:5px;height:5px;background:var(--blue);border-radius:50%;animation:pulse 1.5s infinite;}
-
 /* ── ADMIN MODE ── */
 .admin-badge{
   display:inline-block;padding:2px 8px;
@@ -762,16 +746,6 @@ option{background:var(--bg3);}
     <div class="nero-pill" onclick="toggleNero()"><div class="nero-dot"></div>NERO</div>
     <div class="tb-avatar" id="tb-av" onclick="navTo('profile')">?</div>
   </div>
-</div>
-
-
-<!-- ADMIN BAR -->
-<div class="admin-bar" id="admin-bar">
-  <div class="admin-bar-left">
-    <div class="admin-bar-dot"></div>
-    ADMIN MODE ACTIVE
-  </div>
-  <span style="color:var(--muted);font-size:8px;">NORTHHHERN LABS</span>
 </div>
 
 
@@ -1850,4 +1824,19 @@ async function sendNero(){
   const txt=inp.value.trim();if(!txt)return;
   inp.value='';
   const msgs=document.getElementById('np-msgs');
-  const ud=document.create
+  const ud=document.createElement('div');ud.className='nm nm-u';ud.textContent=txt;msgs.appendChild(ud);
+  const td=document.createElement('div');td.className='nm nm-n';
+  td.innerHTML=`<div class="nml">NERO</div><div class="na-loading"><div class="na-dot"></div><div class="na-dot"></div><div class="na-dot"></div></div>`;
+  msgs.appendChild(td);msgs.scrollTop=msgs.scrollHeight;
+  try{
+    const r=await fetch('/api/nero',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:txt}]})});
+    const data=await r.json();
+    if(data.error) td.innerHTML=`<div class="nml">NERO</div>Error: ${data.error}`;
+    else td.innerHTML=`<div class="nml">NERO</div>${data.content?.[0]?.text||'No response.'}`;
+  }catch(e){td.innerHTML=`<div class="nml">NERO</div>Error: ${e.message}`;}
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ── TOAST ──
+function toast(m){
+  const t=document.getElemen
