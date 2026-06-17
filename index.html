@@ -739,6 +739,38 @@ option{background:var(--bg3);}
 </div>
 
 
+
+<script>
+// SPLASH — runs independently before anything else
+var _splashDone=false;
+function dismissSplash(){
+  if(_splashDone)return;
+  _splashDone=true;
+  var s=document.getElementById('splash');
+  if(s){s.style.opacity='0';s.style.transition='opacity 0.4s ease';setTimeout(function(){if(s&&s.parentNode)s.parentNode.removeChild(s);},450);}
+}
+window.addEventListener('load',function(){
+  var pctEl=document.getElementById('sp-pct');
+  var targets=[0,45,72,89,100];
+  var times=[0,960,1680,2040,2400];
+  var idx=0;
+  function runPct(){
+    if(idx>=targets.length-1){setTimeout(dismissSplash,400);return;}
+    var from=targets[idx],to=targets[idx+1],dur=times[idx+1]-times[idx],start=Date.now();
+    var iv=setInterval(function(){
+      var p=Math.min((Date.now()-start)/dur,1);
+      if(pctEl)pctEl.textContent=Math.round(from+(to-from)*p)+'%';
+      if(p>=1){clearInterval(iv);idx++;runPct();}
+    },30);
+  }
+  runPct();
+  setTimeout(dismissSplash,5000);
+});
+setTimeout(dismissSplash,8000);
+document.addEventListener('touchstart',dismissSplash);
+document.addEventListener('click',dismissSplash);
+</script>
+
 <!-- TOP BAR -->
 <div class="topbar">
   <div class="tb-logo" id="tb-logo" onclick="adminLogoTap()">KL<span>A</span>VE</div>
@@ -1819,24 +1851,4 @@ function toggleNero(){
   document.getElementById('nero-overlay').classList.toggle('on',nopen);
 }
 async function sendNero(){
-  if(!window._currentUser){toast('Sign in to use NERO');return;}
-  const inp=document.getElementById('ni-inp');
-  const txt=inp.value.trim();if(!txt)return;
-  inp.value='';
-  const msgs=document.getElementById('np-msgs');
-  const ud=document.createElement('div');ud.className='nm nm-u';ud.textContent=txt;msgs.appendChild(ud);
-  const td=document.createElement('div');td.className='nm nm-n';
-  td.innerHTML=`<div class="nml">NERO</div><div class="na-loading"><div class="na-dot"></div><div class="na-dot"></div><div class="na-dot"></div></div>`;
-  msgs.appendChild(td);msgs.scrollTop=msgs.scrollHeight;
-  try{
-    const r=await fetch('/api/nero',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:txt}]})});
-    const data=await r.json();
-    if(data.error) td.innerHTML=`<div class="nml">NERO</div>Error: ${data.error}`;
-    else td.innerHTML=`<div class="nml">NERO</div>${data.content?.[0]?.text||'No response.'}`;
-  }catch(e){td.innerHTML=`<div class="nml">NERO</div>Error: ${e.message}`;}
-  msgs.scrollTop=msgs.scrollHeight;
-}
-
-// ── TOAST ──
-function toast(m){
-  const t=document.getElemen
+  if(!window._currentUser){toast('Sign in to
