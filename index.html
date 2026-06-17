@@ -1479,10 +1479,10 @@ async function publishBeat(){
     window._activeXHR=null;
     const cd=await new Promise((resolve,reject)=>{
       const fd=new FormData();
-      fd.append('file',audioFile);fd.append('upload_preset','klave_beats');fd.append('resource_type','video');
+      fd.append('file',audioFile);fd.append('upload_preset','klave_beats');fd.append('resource_type','auto');
       const xhr=new XMLHttpRequest();
       window._activeXHR=xhr;
-      xhr.open('POST','https://api.cloudinary.com/v1_1/dcajo9jib/video/upload');
+      xhr.open('POST','https://api.cloudinary.com/v1_1/dcajo9jib/auto/upload');
       xhr.upload.onprogress=e=>{
         if(e.lengthComputable){const pct=Math.round((e.loaded/e.total)*100);upFill.style.width=pct+'%';upPct.textContent=pct+'%';upStatus.textContent=pct<100?'UPLOADING AUDIO...':'PROCESSING...';}
       };
