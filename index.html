@@ -642,6 +642,7 @@ option{background:var(--bg3);}
     <div class="upload-wrap">
       <div style="font-size:22px;font-weight:800;letter-spacing:1px;margin-bottom:4px;">UPLOAD BEAT</div>
       <div style="font-family:var(--M);font-size:9px;color:var(--muted2);letter-spacing:2px;margin-bottom:20px;">// drop your file. nero handles the rest.</div>
+      <button onclick="testCloudinary()" style="width:100%;padding:10px;margin-bottom:12px;background:transparent;border:1px solid var(--blue);color:var(--blue);font-family:var(--M);font-size:9px;letter-spacing:1px;cursor:pointer;">TEST CONNECTION</button>
       <div class="upload-hero" id="upload-hero" onclick="document.getElementById('af').click()">
         <div class="uh-icon">🎵</div>
         <div class="uh-title">Drop Your Beat</div>
@@ -1428,6 +1429,22 @@ function onFileSelect(input){
     warn.style.display='none';
   }
   if(window._currentUser) analyzeWithNero(f.name);
+}
+
+async function testCloudinary(){
+  toast('Testing Cloudinary...');
+  try{
+    const fd=new FormData();
+    // Create a tiny test blob
+    const blob=new Blob(['test'],{type:'text/plain'});
+    fd.append('file',blob,'test.txt');
+    fd.append('upload_preset','klave_beats');
+    fd.append('resource_type','auto');
+    const res=await fetch('https://api.cloudinary.com/v1_1/dcajo9jib/auto/upload',{method:'POST',body:fd});
+    const data=await res.json();
+    if(data.secure_url){toast('Cloudinary OK ✓');}
+    else{toast('Error: '+(data.error?.message||JSON.stringify(data)));}
+  }catch(e){toast('Connection failed: '+e.message);}
 }
 
 function cancelUpload(){
