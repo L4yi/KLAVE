@@ -537,144 +537,6 @@ option{background:var(--bg3);}
 /* card form */
 .card-form{margin-bottom:24px;}
 
-/* ── SPLASH SCREEN ── */
-#splash{
-  position:fixed;inset:0;z-index:99999;
-  background:var(--bg);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  transition:opacity .5s ease;
-}
-#splash.gone{display:none;}
-#splash.out{opacity:0;pointer-events:none;}
-
-/* corner brackets */
-.sp-bracket{
-  position:absolute;width:24px;height:24px;
-  border-color:rgba(18,70,245,0.35);border-style:solid;border-width:0;
-}
-.sp-bracket.tl{top:20px;left:20px;border-top-width:1px;border-left-width:1px;}
-.sp-bracket.tr{top:20px;right:20px;border-top-width:1px;border-right-width:1px;}
-.sp-bracket.bl{bottom:20px;left:20px;border-bottom-width:1px;border-left-width:1px;}
-.sp-bracket.br{bottom:20px;right:20px;border-bottom-width:1px;border-right-width:1px;}
-
-/* grid bg */
-#splash::after{
-  content:'';position:absolute;inset:0;
-  background-image:
-    linear-gradient(rgba(18,70,245,0.04) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(18,70,245,0.04) 1px,transparent 1px);
-  background-size:40px 40px;
-  pointer-events:none;
-}
-
-.sp-inner{
-  position:relative;z-index:2;
-  display:flex;flex-direction:column;align-items:center;gap:0;
-  animation:sp-fade .3s ease .2s both;
-}
-@keyframes sp-fade{from{opacity:0;}to{opacity:1;}}
-
-.sp-sys{
-  font-family:var(--M);font-size:9px;letter-spacing:.25em;
-  color:var(--blue);opacity:.5;margin-bottom:10px;
-  animation:sp-blink 2.5s step-end infinite;
-}
-@keyframes sp-blink{0%,100%{opacity:.5;}50%{opacity:.15;}}
-
-.sp-logo-wrap{position:relative;display:inline-block;}
-
-.sp-logo{
-  font-family:var(--H);font-size:clamp(32px,8vw,56px);
-  font-weight:800;letter-spacing:.12em;line-height:1;
-  color:var(--white);user-select:none;position:relative;
-}
-
-/* glitch layers */
-.sp-logo::before,.sp-logo::after{
-  content:'KLAVE';
-  position:absolute;top:0;left:0;width:100%;height:100%;
-}
-.sp-logo::before{
-  color:rgba(18,70,245,0.7);
-  animation:sp-glitch-r 3.5s infinite;
-  clip-path:polygon(0 20%,100% 20%,100% 40%,0 40%);
-}
-.sp-logo::after{
-  color:rgba(45,91,255,0.5);
-  animation:sp-glitch-b 3.5s infinite;
-  clip-path:polygon(0 60%,100% 60%,100% 80%,0 80%);
-}
-@keyframes sp-glitch-r{
-  0%,90%,100%{transform:translate(0);opacity:0;}
-  91%{transform:translate(-3px,1px);opacity:.8;}
-  92%{transform:translate(3px,-1px);opacity:.8;}
-  93%{transform:translate(-2px,0);opacity:.8;}
-  94%{transform:translate(0);opacity:0;}
-  96%{transform:translate(-4px,2px);opacity:.6;}
-  97%{transform:translate(0);opacity:0;}
-}
-@keyframes sp-glitch-b{
-  0%,90%,100%{transform:translate(0);opacity:0;}
-  91%{transform:translate(3px,-1px);opacity:.7;}
-  92%{transform:translate(-3px,1px);opacity:.7;}
-  93%{transform:translate(2px,0);opacity:.7;}
-  94%{transform:translate(0);opacity:0;}
-  96%{transform:translate(4px,-2px);opacity:.5;}
-  97%{transform:translate(0);opacity:0;}
-}
-
-/* sweep bar */
-.sp-bar{
-  position:absolute;left:-5%;width:110%;height:2px;
-  background:var(--blue);
-  box-shadow:0 0 10px var(--blueglow),0 0 20px var(--blueglow);
-  opacity:0;animation:sp-sweep 3.5s ease-in-out infinite;
-  pointer-events:none;
-}
-@keyframes sp-sweep{
-  0%{top:-5%;opacity:0;}
-  10%{opacity:1;}90%{opacity:1;}
-  100%{top:105%;opacity:0;}
-}
-
-.sp-tag{
-  font-family:var(--M);font-size:clamp(9px,2.5vw,11px);
-  letter-spacing:.3em;color:var(--blue);opacity:0;
-  margin-top:10px;text-transform:uppercase;
-  animation:sp-rise .6s ease 1.2s forwards;
-}
-@keyframes sp-rise{
-  from{opacity:0;transform:translateY(6px);}
-  to{opacity:.7;transform:translateY(0);}
-}
-
-/* loader */
-.sp-loader{
-  margin-top:36px;width:clamp(180px,50vw,280px);
-  display:flex;flex-direction:column;gap:6px;
-  opacity:0;animation:sp-rise .6s ease 1.6s forwards;
-}
-.sp-loader-labels{
-  display:flex;justify-content:space-between;
-  font-family:var(--M);font-size:9px;letter-spacing:.15em;color:var(--muted);
-}
-.sp-pct{color:var(--blue);}
-.sp-track{width:100%;height:2px;background:var(--grey);}
-.sp-fill{
-  height:100%;width:0%;background:var(--blue);
-  box-shadow:0 0 8px var(--blueglow);
-  animation:sp-load 2.4s cubic-bezier(.4,0,.2,1) 2s forwards;
-}
-@keyframes sp-load{
-  0%{width:0%;}40%{width:45%;}70%{width:72%;}85%{width:89%;}100%{width:100%;}
-}
-
-.sp-footer{
-  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
-  font-family:var(--M);font-size:8px;letter-spacing:.18em;
-  color:rgba(18,70,245,0.25);white-space:nowrap;z-index:2;
-}
-
 /* ── ADMIN MODE ── */
 /* ── ADMIN MODE ── */
 .admin-badge{
@@ -713,69 +575,7 @@ option{background:var(--bg3);}
 </head>
 <body>
 
-<!-- SPLASH SCREEN -->
-<div id="splash">
-  <div class="sp-bracket tl"></div>
-  <div class="sp-bracket tr"></div>
-  <div class="sp-bracket bl"></div>
-  <div class="sp-bracket br"></div>
 
-  <div class="sp-inner">
-    <div class="sp-sys">SYS::INIT — v1.0.0</div>
-    <div class="sp-logo-wrap">
-      <div class="sp-logo">KLAVE</div>
-      <div class="sp-bar"></div>
-    </div>
-    <div class="sp-tag">AI-Powered Beat Marketplace</div>
-    <div class="sp-loader">
-      <div class="sp-loader-labels">
-        <span>LOADING SYSTEM</span>
-        <span class="sp-pct" id="sp-pct">0%</span>
-      </div>
-      <div class="sp-track"><div class="sp-fill" id="sp-fill"></div></div>
-    </div>
-  </div>
-
-  <div class="sp-footer">NORTHHHERN LABS &copy; 2025 &nbsp;|&nbsp; KLAVE PLATFORM &nbsp;|&nbsp; ALL RIGHTS RESERVED</div>
-</div>
-
-
-
-<script>
-// SPLASH — runs independently before anything else
-var _splashDone=false;
-function dismissSplash(){
-  if(_splashDone)return;
-  _splashDone=true;
-  var s=document.getElementById('splash');
-  if(s){
-    s.style.display='none';
-    s.style.pointerEvents='none';
-    s.style.zIndex='-1';
-    if(s.parentNode) s.parentNode.removeChild(s);
-  }
-}
-window.addEventListener('load',function(){
-  var pctEl=document.getElementById('sp-pct');
-  var targets=[0,45,72,89,100];
-  var times=[0,960,1680,2040,2400];
-  var idx=0;
-  function runPct(){
-    if(idx>=targets.length-1){setTimeout(dismissSplash,400);return;}
-    var from=targets[idx],to=targets[idx+1],dur=times[idx+1]-times[idx],start=Date.now();
-    var iv=setInterval(function(){
-      var p=Math.min((Date.now()-start)/dur,1);
-      if(pctEl)pctEl.textContent=Math.round(from+(to-from)*p)+'%';
-      if(p>=1){clearInterval(iv);idx++;runPct();}
-    },30);
-  }
-  runPct();
-  setTimeout(dismissSplash,5000);
-});
-setTimeout(dismissSplash,8000);
-document.addEventListener('touchstart',dismissSplash);
-document.addEventListener('click',dismissSplash);
-</script>
 
 <!-- TOP BAR -->
 <div class="topbar">
@@ -1857,4 +1657,81 @@ function toggleNero(){
   document.getElementById('nero-overlay').classList.toggle('on',nopen);
 }
 async function sendNero(){
-  if(!windo
+  if(!window._currentUser){toast('Sign in to use NERO');return;}
+  const inp=document.getElementById('ni-inp');
+  const txt=inp.value.trim();if(!txt)return;
+  inp.value='';
+  const msgs=document.getElementById('np-msgs');
+  const ud=document.createElement('div');ud.className='nm nm-u';ud.textContent=txt;msgs.appendChild(ud);
+  const td=document.createElement('div');td.className='nm nm-n';
+  td.innerHTML=`<div class="nml">NERO</div><div class="na-loading"><div class="na-dot"></div><div class="na-dot"></div><div class="na-dot"></div></div>`;
+  msgs.appendChild(td);msgs.scrollTop=msgs.scrollHeight;
+  try{
+    const r=await fetch('/api/nero',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:txt}]})});
+    const data=await r.json();
+    if(data.error) td.innerHTML=`<div class="nml">NERO</div>Error: ${data.error}`;
+    else td.innerHTML=`<div class="nml">NERO</div>${data.content?.[0]?.text||'No response.'}`;
+  }catch(e){td.innerHTML=`<div class="nml">NERO</div>Error: ${e.message}`;}
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ── TOAST ──
+function toast(m){
+  const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'),2600);
+}
+
+// ── PWA ──
+window._deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window._deferredPrompt=e;});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+
+// ── DRAG & DROP ──
+const uh=document.getElementById('upload-hero');
+uh.addEventListener('dragover',e=>{e.preventDefault();uh.classList.add('has-file');});
+uh.addEventListener('dragleave',()=>uh.classList.remove('has-file'));
+uh.addEventListener('drop',e=>{
+  e.preventDefault();const f=e.dataTransfer.files[0];
+  if(f){document.getElementById('af').files=e.dataTransfer.files;onFileSelect(document.getElementById('af'));}
+});
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded',function(){
+  try{ buildWave(); }catch(e){}
+  try{ renderHome(); }catch(e){}
+  try{ renderSearch(); }catch(e){}
+  // Make all nav items clickable regardless
+  try{
+    document.querySelectorAll('.nav-item').forEach(function(el){
+      el.style.pointerEvents='auto';
+      el.style.cursor='pointer';
+    });
+    document.querySelector('.app').style.pointerEvents='auto';
+    document.querySelectorAll('.screen').forEach(function(el){
+      el.style.pointerEvents='auto';
+    });
+  }catch(e){}
+});
+
+window.addEventListener('error',function(e){});
+window.addEventListener('unhandledrejection',function(e){ e.preventDefault(); });
+
+
+// Triple tap logo = go to admin analytics
+let _logoTaps=0,_logoTimer=null;
+function adminLogoTap(){
+  _logoTaps++;
+  clearTimeout(_logoTimer);
+  _logoTimer=setTimeout(()=>{ _logoTaps=0; },500);
+  if(_logoTaps>=3 && isAdmin()){
+    _logoTaps=0;
+    navTo('analytics');
+    toast('Admin panel ✓');
+  }
+}
+
+
+
+</script>
+</body>
+</html>
