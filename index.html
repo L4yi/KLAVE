@@ -1486,9 +1486,18 @@ async function publishBeat(){
       xhr.upload.onprogress=e=>{
         if(e.lengthComputable){const pct=Math.round((e.loaded/e.total)*100);upFill.style.width=pct+'%';upPct.textContent=pct+'%';upStatus.textContent=pct<100?'UPLOADING AUDIO...':'PROCESSING...';}
       };
-      xhr.onload=()=>{window._activeXHR=null;try{resolve(JSON.parse(xhr.responseText));}catch(e){reject(e);}};
-      xhr.onerror=()=>{window._activeXHR=null;reject(new Error('Upload failed'));};
+      xhr.onload=()=>{
+        window._activeXHR=null;
+        try{
+          const res=JSON.parse(xhr.responseText);
+          if(res.error){reject(new Error('Cloudinary: '+res.error.message));}
+          else{resolve(res);}
+        }catch(e){reject(e);}
+      };
+      xhr.onerror=()=>{window._activeXHR=null;reject(new Error('Network error — check connection'));};
       xhr.onabort=()=>{window._activeXHR=null;reject(new Error('CANCELLED'));};
+      xhr.ontimeout=()=>{window._activeXHR=null;reject(new Error('Upload timed out'));};
+      xhr.timeout=120000;
       xhr.send(fd);
     });
     if(!cd.secure_url){progressWrap.style.display='none';toast('Audio upload failed');btn.textContent='PUBLISH BEAT';btn.disabled=false;return;}
