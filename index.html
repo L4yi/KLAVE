@@ -1494,29 +1494,30 @@ async function publishBeat(){
     const upStatus=document.getElementById('up-status');
     progressWrap.style.display='block';
     window._activeXHR=null;
-    const cd=await new Promise((resolve,reject)=>{
-      const fd=new FormData();
-      fd.append('file',audioFile);fd.append('upload_preset','klave_beats');fd.append('resource_type','auto');
-      const xhr=new XMLHttpRequest();
-      window._activeXHR=xhr;
-      xhr.open('POST','https://api.cloudinary.com/v1_1/dcajo9jib/auto/upload');
-      xhr.upload.onprogress=e=>{
-        if(e.lengthComputable){const pct=Math.round((e.loaded/e.total)*100);upFill.style.width=pct+'%';upPct.textContent=pct+'%';upStatus.textContent=pct<100?'UPLOADING AUDIO...':'PROCESSING...';}
-      };
-      xhr.onload=()=>{
-        window._activeXHR=null;
-        try{
-          const res=JSON.parse(xhr.responseText);
-          if(res.error){reject(new Error('Cloudinary: '+res.error.message));}
-          else{resolve(res);}
-        }catch(e){reject(e);}
-      };
-      xhr.onerror=()=>{window._activeXHR=null;reject(new Error('Network error — check connection'));};
-      xhr.onabort=()=>{window._activeXHR=null;reject(new Error('CANCELLED'));};
-      xhr.ontimeout=()=>{window._activeXHR=null;reject(new Error('Upload timed out'));};
-      xhr.timeout=120000;
-      xhr.send(fd);
-    });
+    // Use fetch instead of XHR for better mobile compatibility
+    upStatus.textContent='UPLOADING AUDIO...';
+    upFill.style.width='10%';upPct.textContent='10%';
+    const fd=new FormData();
+    fd.append('file',audioFile);
+    fd.append('upload_preset','klave_beats');
+    fd.append('resource_type','auto');
+    let cd;
+    try{
+      const res=await fetch('https://api.cloudinary.com/v1_1/dcajo9jib/auto/upload',{method:'POST',body:fd});
+      cd=await res.json();
+      upFill.style.width='90%';upPct.textContent='90%';upStatus.textContent='PROCESSING...';
+    }catch(e){
+      toast('Upload failed: '+e.message);
+      btn.textContent='PUBLISH BEAT';btn.disabled=false;
+      document.getElementById('upload-progress').style.display='none';
+      return;
+    }
+    if(cd.error){
+      toast('Cloudinary: '+cd.error.message);
+      btn.textContent='PUBLISH BEAT';btn.disabled=false;
+      document.getElementById('upload-progress').style.display='none';
+      return;
+    }
     if(!cd.secure_url){progressWrap.style.display='none';toast('Audio upload failed');btn.textContent='PUBLISH BEAT';btn.disabled=false;return;}
     upStatus.textContent='SAVING BEAT...';upFill.style.width='100%';
     await window._addDoc(window._collection(window._db,'beats'),{title:title.toUpperCase(),bpm:Number(bpm)||0,key,genre:genre.toLowerCase(),mood:mood.toLowerCase(),price:Number(price),exclPrice:Number(excl)||0,prod:window._currentUser.email.split('@')[0],producerId:window._currentUser.uid,audioUrl:cd.secure_url,duration:cd.duration||0,createdAt:window._ts()});
