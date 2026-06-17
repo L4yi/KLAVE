@@ -543,8 +543,8 @@ option{background:var(--bg3);}
   background:var(--bg);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   transition:opacity .5s ease;
-  pointer-events:none;
 }
+#splash.gone{display:none;}
 #splash.out{opacity:0;pointer-events:none;}
 
 /* corner brackets */
@@ -748,7 +748,14 @@ function dismissSplash(){
   if(_splashDone)return;
   _splashDone=true;
   var s=document.getElementById('splash');
-  if(s){s.style.opacity='0';s.style.transition='opacity 0.4s ease';setTimeout(function(){if(s&&s.parentNode)s.parentNode.removeChild(s);},450);}
+  if(s){
+    s.style.opacity='0';
+    s.style.transition='opacity 0.4s ease';
+    setTimeout(function(){
+      if(s){s.style.display='none';s.style.pointerEvents='none';}
+      if(s&&s.parentNode)s.parentNode.removeChild(s);
+    },450);
+  }
 }
 window.addEventListener('load',function(){
   var pctEl=document.getElementById('sp-pct');
@@ -1849,7 +1856,4 @@ async function saveProfile(){
 function toggleNero(){
   nopen=!nopen;
   document.getElementById('nero-panel').classList.toggle('on',nopen);
-  document.getElementById('nero-overlay').classList.toggle('on',nopen);
-}
-async function sendNero(){
-  if(!window._current
+  document.getElement
