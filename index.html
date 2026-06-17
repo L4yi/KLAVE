@@ -572,75 +572,10 @@ option{background:var(--bg3);}
 }
 .auth-or::before,.auth-or::after{content:'';flex:1;height:1px;background:var(--grey);}
 
-/* ── SPLASH ── */
-#splash{position:fixed;inset:0;z-index:99999;background:#0A0A0F;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-.sp-bracket{position:absolute;width:24px;height:24px;border-color:rgba(18,70,245,0.35);border-style:solid;border-width:0;}
-.sp-bracket.tl{top:20px;left:20px;border-top-width:1px;border-left-width:1px;}
-.sp-bracket.tr{top:20px;right:20px;border-top-width:1px;border-right-width:1px;}
-.sp-bracket.bl{bottom:20px;left:20px;border-bottom-width:1px;border-left-width:1px;}
-.sp-bracket.br{bottom:20px;right:20px;border-bottom-width:1px;border-right-width:1px;}
-.sp-sys{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.25em;color:#1246F5;opacity:.5;margin-bottom:10px;}
-.sp-logo{font-family:'Syne',sans-serif;font-size:56px;font-weight:800;letter-spacing:.12em;color:#F0EEF8;position:relative;}
-.sp-logo::before,.sp-logo::after{content:'KLAVE';position:absolute;top:0;left:0;width:100%;height:100%;}
-.sp-logo::before{color:rgba(18,70,245,0.7);animation:sp-gr 3.5s infinite;clip-path:polygon(0 20%,100% 20%,100% 40%,0 40%);}
-.sp-logo::after{color:rgba(45,91,255,0.5);animation:sp-gb 3.5s infinite;clip-path:polygon(0 60%,100% 60%,100% 80%,0 80%);}
-@keyframes sp-gr{0%,90%,100%{transform:translate(0);opacity:0;}91%{transform:translate(-3px,1px);opacity:.8;}92%{transform:translate(3px,-1px);opacity:.8;}94%{transform:translate(0);opacity:0;}}
-@keyframes sp-gb{0%,90%,100%{transform:translate(0);opacity:0;}91%{transform:translate(3px,-1px);opacity:.7;}92%{transform:translate(-3px,1px);opacity:.7;}94%{transform:translate(0);opacity:0;}}
-.sp-tag{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.3em;color:#1246F5;opacity:.7;margin-top:10px;text-transform:uppercase;}
-.sp-loader{margin-top:36px;width:260px;display:flex;flex-direction:column;gap:6px;}
-.sp-loader-labels{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.15em;color:#555570;}
-.sp-pct{color:#1246F5;}
-.sp-track{width:100%;height:2px;background:#222230;}
-.sp-fill{height:100%;width:0%;background:#1246F5;box-shadow:0 0 8px rgba(18,70,245,0.3);}
-.sp-footer{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.18em;color:rgba(18,70,245,0.25);white-space:nowrap;}
+
 </style>
 </head>
 <body>
-<div id="splash">
-  <div class="sp-bracket tl"></div><div class="sp-bracket tr"></div>
-  <div class="sp-bracket bl"></div><div class="sp-bracket br"></div>
-  <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;">
-    <div class="sp-sys">SYS::INIT — v1.0.0</div>
-    <div class="sp-logo">KLAVE</div>
-    <div class="sp-tag">AI-Powered Beat Marketplace</div>
-    <div class="sp-loader">
-      <div class="sp-loader-labels"><span>LOADING</span><span class="sp-pct" id="sp-pct">0%</span></div>
-      <div class="sp-track"><div class="sp-fill" id="sp-fill"></div></div>
-    </div>
-  </div>
-  <div class="sp-footer">NORTHHHERN LABS © 2025 | KLAVE PLATFORM</div>
-</div>
-<script>
-// Splash — fully isolated, removes itself completely
-(function(){
-  var done=false;
-  function kill(){
-    if(done)return;done=true;
-    var s=document.getElementById('splash');
-    if(s&&s.parentNode)s.parentNode.removeChild(s);
-  }
-  // Percentage
-  var fills=[[0,0],[960,45],[1680,72],[2040,89],[2400,100]];
-  var fi=0;
-  function tick(){
-    if(fi>=fills.length-1){setTimeout(kill,200);return;}
-    var f=fills[fi],t=fills[fi+1],dur=t[0]-f[0],s0=Date.now();
-    var iv=setInterval(function(){
-      var p=Math.min((Date.now()-s0)/dur,1);
-      var el=document.getElementById('sp-pct');
-      var fl=document.getElementById('sp-fill');
-      if(el)el.textContent=Math.round(f[1]+(t[1]-f[1])*p)+'%';
-      if(fl)fl.style.width=Math.round(f[1]+(t[1]-f[1])*p)+'%';
-      if(p>=1){clearInterval(iv);fi++;tick();}
-    },30);
-  }
-  setTimeout(tick,500);
-  // Nuclear fallbacks
-  setTimeout(kill,4000);
-  setTimeout(kill,6000);
-  setTimeout(kill,8000);
-})();
-</script>
 
 
 
@@ -1773,4 +1708,32 @@ document.addEventListener('DOMContentLoaded',function(){
       el.style.pointerEvents='auto';
       el.style.cursor='pointer';
     });
-    docu
+    document.querySelector('.app').style.pointerEvents='auto';
+    document.querySelectorAll('.screen').forEach(function(el){
+      el.style.pointerEvents='auto';
+    });
+  }catch(e){}
+});
+
+window.addEventListener('error',function(e){});
+window.addEventListener('unhandledrejection',function(e){ e.preventDefault(); });
+
+
+// Triple tap logo = go to admin analytics
+let _logoTaps=0,_logoTimer=null;
+function adminLogoTap(){
+  _logoTaps++;
+  clearTimeout(_logoTimer);
+  _logoTimer=setTimeout(()=>{ _logoTaps=0; },500);
+  if(_logoTaps>=3 && isAdmin()){
+    _logoTaps=0;
+    navTo('analytics');
+    toast('Admin panel ✓');
+  }
+}
+
+
+
+</script>
+</body>
+</html>
