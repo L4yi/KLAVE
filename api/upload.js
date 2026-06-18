@@ -1,16 +1,8 @@
-// api/upload.js — Cloudinary upload proxy
-import { v2 as cloudinary } from 'cloudinary';
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
+// api/upload.js — Cloudinary upload proxy (no dependencies)
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '50mb',
+      sizeLimit: '52mb',
     },
   },
 };
@@ -23,24 +15,44 @@ export default async function handler(req, res) {
 
     if (!file) return res.status(400).json({ error: 'No file provided' });
 
-    // Upload base64 file to Cloudinary
-    const result = await cloudinary.uploader.upload(file, {
-      resource_type: 'auto',
-      upload_preset: 'klave_beats',
-      public_id: `beats/${Date.now()}_${fileName || 'beat'}`,
-      overwrite: false,
-    });
+    // Build form data for Cloudinary
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'klave_beats');
+    formData.append('resource_type', 'auto');
+    formData.append('cloud_name', process.env.CLOUDINARY_CLOUD_NAME);
 
-    res.status(200).json({
-      secure_url: result.secure_url,
-      public_id: result.public_id,
-      duration: result.duration || 0,
-      format: result.format,
-      bytes: result.bytes,
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+    // Use Cloudinary REST API directly
+    const timestamp = Math.round(Date.now() / 1000);
+    
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    const data = await response.json();
+
+    if (data.error) {
+      return res.status(400).json({ error: data.error.message });
+    }
+
+    return res.status(200).json({
+      secure_url: data.secure_url,
+      public_id: data.public_id,
+      duration: data.duration || 0,
+      format: data.format,
+      bytes: data.bytes,
     });
 
   } catch (e) {
     console.error('Upload error:', e);
-    res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: e.message });
   }
 }
