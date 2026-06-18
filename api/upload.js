@@ -1,4 +1,4 @@
-// api/upload.js — Cloudinary upload proxy (no dependencies)
+// api/upload.js — Cloudinary upload proxy using base64 data URI
 export const config = {
   api: {
     bodyParser: {
@@ -15,25 +15,37 @@ export default async function handler(req, res) {
 
     if (!file) return res.status(400).json({ error: 'No file provided' });
 
-    // Build form data for Cloudinary
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'klave_beats');
-    formData.append('resource_type', 'auto');
-    formData.append('cloud_name', process.env.CLOUDINARY_CLOUD_NAME);
-
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
-    // Use Cloudinary REST API directly
+    if (!cloudName || !apiKey || !apiSecret) {
+      return res.status(500).json({ error: 'Cloudinary env vars missing' });
+    }
+
+    // Sign the upload
     const timestamp = Math.round(Date.now() / 1000);
+    const str = `timestamp=${timestamp}&upload_preset=klave_beats${apiSecret}`;
     
+    // Use crypto to sign
+    const { createHash } = await import('crypto');
+    const signature = createHash('sha1').update(str).digest('hex');
+
+    // Send as JSON to Cloudinary
+    const params = new URLSearchParams();
+    params.append('file', file); // base64 data URI
+    params.append('upload_preset', 'klave_beats');
+    params.append('api_key', apiKey);
+    params.append('timestamp', timestamp);
+    params.append('signature', signature);
+    params.append('resource_type', 'auto');
+
     const response = await fetch(
       `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
       {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
       }
     );
 
