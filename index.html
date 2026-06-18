@@ -1503,7 +1503,29 @@ async function publishBeat(){
     fd.append('resource_type','auto');
     let cd;
     try{
-      const res=await fetch('https://api.cloudinary.com/v1_1/dcajo9jib/auto/upload',{method:'POST',body:fd});
+      upStatus.textContent='UPLOADING AUDIO...';
+      upFill.style.width='20%';upPct.textContent='20%';
+
+      // Convert file to base64
+      const base64=await new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onload=()=>resolve(reader.result);
+        reader.onerror=reject;
+        reader.readAsDataURL(audioFile);
+      });
+
+      upFill.style.width='40%';upPct.textContent='40%';
+      upStatus.textContent='SENDING TO SERVER...';
+
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),120000);
+      const res=await fetch('/api/upload',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({file:base64,fileName:audioFile.name}),
+        signal:controller.signal
+      });
+      clearTimeout(timeout);
       cd=await res.json();
       upFill.style.width='90%';upPct.textContent='90%';upStatus.textContent='PROCESSING...';
     }catch(e){
@@ -1513,7 +1535,7 @@ async function publishBeat(){
       return;
     }
     if(cd.error){
-      toast('Cloudinary: '+cd.error.message);
+      toast('Error: '+cd.error);
       btn.textContent='PUBLISH BEAT';btn.disabled=false;
       document.getElementById('upload-progress').style.display='none';
       return;
@@ -1803,4 +1825,4 @@ function adminLogoTap(){
 
 </script>
 </body>
-</html>
+<
