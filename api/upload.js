@@ -23,21 +23,28 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Cloudinary env vars missing' });
     }
 
+    // Sanitize filename — remove extension, slashes, special chars
+    const safeName = (fileName || 'beat')
+      .replace(/\.[^/.]+$/, '')        // remove extension
+      .replace(/[^a-zA-Z0-9_-]/g, '_') // replace special chars/slashes with underscore
+      .slice(0, 60);                   // limit length
+
+    const publicId = `beats/${Date.now()}_${safeName}`;
+
     // Sign the upload
     const timestamp = Math.round(Date.now() / 1000);
-    const str = `timestamp=${timestamp}&upload_preset=klave_beats${apiSecret}`;
-    
-    // Use crypto to sign
+    const str = `public_id=${publicId}&timestamp=${timestamp}&upload_preset=klave_beats${apiSecret}`;
+
     const { createHash } = await import('crypto');
     const signature = createHash('sha1').update(str).digest('hex');
 
-    // Send as JSON to Cloudinary
     const params = new URLSearchParams();
-    params.append('file', file); // base64 data URI
+    params.append('file', file);
     params.append('upload_preset', 'klave_beats');
     params.append('api_key', apiKey);
     params.append('timestamp', timestamp);
     params.append('signature', signature);
+    params.append('public_id', publicId);
     params.append('resource_type', 'auto');
 
     const response = await fetch(
