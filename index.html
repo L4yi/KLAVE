@@ -573,6 +573,35 @@ option{background:var(--bg3);}
 .auth-or::before,.auth-or::after{content:'';flex:1;height:1px;background:var(--grey);}
 
 
+
+/* ── COPYRIGHT & REPORT ── */
+.copy-check{display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--bg3);border:1px solid var(--grey2);margin-bottom:12px;cursor:pointer;}
+.copy-check input[type=checkbox]{width:16px;height:16px;accent-color:var(--blue);flex-shrink:0;margin-top:2px;cursor:pointer;}
+.copy-check-text{font-family:var(--M);font-size:10px;color:var(--muted2);letter-spacing:.5px;line-height:1.7;}
+.copy-check-text a{color:var(--blue);text-decoration:none;}
+.copy-check.required{border-color:#ff4455;}
+
+.report-btn{
+  display:flex;align-items:center;gap:8px;
+  background:transparent;border:none;
+  font-family:var(--M);font-size:9px;color:var(--muted);
+  letter-spacing:1px;cursor:pointer;padding:8px 0;
+  text-transform:uppercase;transition:color .15s;
+}
+.report-btn:active{color:#ff4455;}
+.report-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5;}
+
+.report-modal{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(6px);}
+.report-modal.on{display:flex;}
+.report-box{background:var(--bg2);border:1px solid var(--grey);border-top:2px solid #ff4455;padding:28px 22px;max-width:340px;width:100%;}
+.report-title{font-size:18px;font-weight:800;letter-spacing:1px;margin-bottom:6px;}
+.report-sub{font-family:var(--M);font-size:9px;color:var(--muted2);letter-spacing:1px;line-height:1.7;margin-bottom:20px;}
+.report-options{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
+.report-opt{padding:11px 14px;background:var(--bg3);border:1px solid var(--grey2);font-family:var(--M);font-size:10px;color:var(--muted2);letter-spacing:.5px;cursor:pointer;transition:all .15s;text-align:left;}
+.report-opt.on{border-color:#ff4455;color:#ff4455;background:rgba(255,68,85,.05);}
+.report-actions{display:flex;gap:8px;}
+.report-submit{flex:1;padding:12px;background:#ff4455;color:#fff;border:none;font-family:var(--H);font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;}
+.report-cancel{padding:12px 16px;background:transparent;border:1px solid var(--grey);color:var(--muted2);font-family:var(--M);font-size:10px;letter-spacing:1px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -908,9 +937,21 @@ option{background:var(--bg3);}
               <button class="rbtn" onclick="pickRole(this)">Buyer</button>
             </div>
           </div>
+          <div class="copy-check" id="signup-terms" onclick="toggleCopyCheck()">
+            <input type="checkbox" id="copy-checkbox" onclick="event.stopPropagation()"/>
+            <div class="copy-check-text">
+              I agree to KLAVE's <a href="#" onclick="event.preventDefault()">Terms of Service</a>. If I upload beats, I confirm they are my original work and I own all rights to them. Uploading content I don't own may result in account suspension.
+            </div>
+          </div>
           <div class="fg"><label class="fl">Email</label><input class="fi" id="a-email" type="email" placeholder="you@email.com"/></div>
           <div class="fg"><label class="fl">Password</label><input class="fi" id="a-pass" type="password" placeholder="••••••••"/></div>
           <div class="auth-err" id="auth-err"></div>
+          <div class="copy-check" id="terms-check" onclick="toggleTermsCheck()" style="display:none;">
+            <input type="checkbox" id="terms-checkbox" onclick="event.stopPropagation()"/>
+            <div class="copy-check-text">
+              I agree to KLAVE's Terms of Service. I confirm I will only upload beats I own and have full rights to. Uploading stolen content will result in permanent account suspension.
+            </div>
+          </div>
           <button class="pub-btn" id="auth-btn" onclick="doAuth()" style="margin-top:4px;">ENTER</button>
           <div class="auth-or">OR</div>
           <button class="google-btn" onclick="doGoogleAuth()">
@@ -1000,6 +1041,24 @@ option{background:var(--bg3);}
   <div id="nero-gate-wrap" class="nero-gate-msg">
     <p>NERO is available to<br>registered users only.</p>
     <button onclick="toggleNero();navTo('auth')">SIGN UP FREE</button>
+  </div>
+</div>
+
+<!-- REPORT MODAL -->
+<div class="report-modal" id="report-modal">
+  <div class="report-box">
+    <div class="report-title">REPORT BEAT</div>
+    <div class="report-sub" id="report-beat-name">Report this beat for a violation.</div>
+    <div class="report-options">
+      <button class="report-opt" onclick="selectReport(this)">Not my original work / stolen beat</button>
+      <button class="report-opt" onclick="selectReport(this)">Duplicate upload</button>
+      <button class="report-opt" onclick="selectReport(this)">Misleading title or tags</button>
+      <button class="report-opt" onclick="selectReport(this)">Inappropriate content</button>
+    </div>
+    <div class="report-actions">
+      <button class="report-cancel" onclick="closeReport()">CANCEL</button>
+      <button class="report-submit" onclick="submitReport()">REPORT</button>
+    </div>
   </div>
 </div>
 
@@ -1096,7 +1155,7 @@ function renderHome(){
   list.forEach((b,i)=>{
     const r=document.createElement('div');
     r.className='bl-row';r.style.animationDelay=(i*.04)+'s';
-    r.innerHTML='<div class="bl-num">'+String(i+1).padStart(2,'0')+'</div><div class="bl-art">'+b.title[0]+'</div><div class="bl-info"><div class="bl-title">'+b.title+'</div><div class="bl-prod">prod. '+b.prod+' • '+b.genre+'</div></div><div class="bl-price">$'+b.price+'</div><button class="bl-buy" onclick="doBuy('+(b.id||i)+',event)">BUY</button>';
+    r.innerHTML='<div class="bl-num">'+String(i+1).padStart(2,'0')+'</div><div class="bl-art">'+b.title[0]+'</div><div class="bl-info"><div class="bl-title">'+b.title+'</div><div class="bl-prod">prod. '+b.prod+' • '+b.genre+'</div></div><div class="bl-price">$'+b.price+'</div><button class="bl-buy" onclick="doBuy('+(b.id||i)+',event)">BUY</button><button class="report-btn" data-title="'+b.title.replace(/"/g,'&quot;')+'" onclick="openReport(this.dataset.title,event)" title="Report"><svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></button>';
     r.addEventListener('click',e=>{ if(e.target.classList.contains('bl-buy')) return; playBeat(b.id||i); });
     bl.appendChild(r);
   });
@@ -1568,6 +1627,8 @@ async function publishBeat(){
 function authTab(btn,t){
   document.querySelectorAll('.at').forEach(x=>x.classList.remove('on'));btn.classList.add('on');
   document.getElementById('role-wrap').style.display=t==='up'?'block':'none';
+  const tc=document.getElementById('terms-check');
+  if(tc) tc.style.display=t==='up'?'flex':'none';
   _authMode=t;clearErr();
 }
 function pickRole(b){document.querySelectorAll('.rbtn').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
@@ -1633,9 +1694,22 @@ async function doAuth(){
   const pass=document.getElementById('a-pass').value.trim();
   if(!email){showErr('Enter your email');return;}
   if(!pass){showErr('Enter your password');return;}
+  if(_authMode==='up'){
+    const checkbox=document.getElementById('copy-checkbox');
+    if(!checkbox||!checkbox.checked){
+      showErr('Please agree to the Terms of Service');
+      return;
+    }
+  }
   const btn=document.getElementById('auth-btn');btn.textContent='LOADING...';btn.disabled=true;
   try{
     if(_authMode==='up'){
+      const tc=document.getElementById('terms-checkbox');
+      if(!tc||!tc.checked){
+        document.getElementById('terms-check').classList.add('required');
+        showErr('Please agree to the Terms of Service');
+        btn.textContent='ENTER';btn.disabled=false;return;
+      }
       const role=document.querySelector('.rbtn.on')?.textContent?.toLowerCase()||'buyer';
       const c=await window._createUser(window._auth,email,pass);
       await window._sendVerification(c.user);
@@ -1697,132 +1771,4 @@ function loadProfile(){
           if(data.bio) document.getElementById('pf-bio').value=data.bio;
           // Show saved photo if exists
           if(data.photoURL&&!user.photoURL){
-            av.innerHTML='<img src="'+data.photoURL+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
-          }
-          // Update topbar avatar
-          const tbAv=document.getElementById('tb-av');
-          if(tbAv&&!user.photoURL) tbAv.textContent=name[0].toUpperCase();
-        } else {
-          document.getElementById('prof-name').textContent=uname;
-          document.getElementById('pf-name').value=uname;
-        }
-      }).catch(()=>{
-        document.getElementById('prof-name').textContent=uname;
-        document.getElementById('pf-name').value=uname;
-      });
-    });
-  } else {
-    document.getElementById('prof-name').textContent=uname;
-    document.getElementById('pf-name').value=uname;
-  }
-}
-function handleAvatar(input){
-  if(!input.files[0])return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const av=document.getElementById('prof-av');
-    av.innerHTML=`<img src="${e.target.result}"/>`;
-    toast('Avatar updated');
-  };
-  reader.readAsDataURL(input.files[0]);
-}
-async function saveProfile(){
-  if(!window._currentUser){toast('Sign in first');return;}
-  const name=document.getElementById('pf-name').value.trim();
-  const bio=document.getElementById('pf-bio').value.trim();
-  try{
-    await window._setDoc(window._doc(window._db,'users',window._currentUser.uid),{displayName:name,bio,updatedAt:window._ts()},{merge:true});
-    const displayName=name||window._currentUser.email.split('@')[0];
-    document.getElementById('prof-name').textContent=displayName;
-    // Update topbar avatar letter
-    const tbAv=document.getElementById('tb-av');
-    if(tbAv&&!window._currentUser.photoURL) tbAv.textContent=displayName[0].toUpperCase();
-    toast('Profile saved ✓');
-  }catch(e){toast('Failed to save.');}
-}
-
-// ── NERO PANEL ──
-function toggleNero(){
-  nopen=!nopen;
-  document.getElementById('nero-panel').classList.toggle('on',nopen);
-  document.getElementById('nero-overlay').classList.toggle('on',nopen);
-}
-async function sendNero(){
-  if(!window._currentUser){toast('Sign in to use NERO');return;}
-  const inp=document.getElementById('ni-inp');
-  const txt=inp.value.trim();if(!txt)return;
-  inp.value='';
-  const msgs=document.getElementById('np-msgs');
-  const ud=document.createElement('div');ud.className='nm nm-u';ud.textContent=txt;msgs.appendChild(ud);
-  const td=document.createElement('div');td.className='nm nm-n';
-  td.innerHTML=`<div class="nml">NERO</div><div class="na-loading"><div class="na-dot"></div><div class="na-dot"></div><div class="na-dot"></div></div>`;
-  msgs.appendChild(td);msgs.scrollTop=msgs.scrollHeight;
-  try{
-    const r=await fetch('/api/nero',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:txt}]})});
-    const data=await r.json();
-    if(data.error) td.innerHTML=`<div class="nml">NERO</div>Error: ${data.error}`;
-    else td.innerHTML=`<div class="nml">NERO</div>${data.content?.[0]?.text||'No response.'}`;
-  }catch(e){td.innerHTML=`<div class="nml">NERO</div>Error: ${e.message}`;}
-  msgs.scrollTop=msgs.scrollHeight;
-}
-
-// ── TOAST ──
-function toast(m){
-  const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');
-  setTimeout(()=>t.classList.remove('on'),2600);
-}
-
-// ── PWA ──
-window._deferredPrompt=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window._deferredPrompt=e;});
-if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
-
-// ── DRAG & DROP ──
-const uh=document.getElementById('upload-hero');
-uh.addEventListener('dragover',e=>{e.preventDefault();uh.classList.add('has-file');});
-uh.addEventListener('dragleave',()=>uh.classList.remove('has-file'));
-uh.addEventListener('drop',e=>{
-  e.preventDefault();const f=e.dataTransfer.files[0];
-  if(f){document.getElementById('af').files=e.dataTransfer.files;onFileSelect(document.getElementById('af'));}
-});
-
-// ── INIT ──
-document.addEventListener('DOMContentLoaded',function(){
-  try{ buildWave(); }catch(e){}
-  try{ renderHome(); }catch(e){}
-  try{ renderSearch(); }catch(e){}
-  // Make all nav items clickable regardless
-  try{
-    document.querySelectorAll('.nav-item').forEach(function(el){
-      el.style.pointerEvents='auto';
-      el.style.cursor='pointer';
-    });
-    document.querySelector('.app').style.pointerEvents='auto';
-    document.querySelectorAll('.screen').forEach(function(el){
-      el.style.pointerEvents='auto';
-    });
-  }catch(e){}
-});
-
-window.addEventListener('error',function(e){});
-window.addEventListener('unhandledrejection',function(e){ e.preventDefault(); });
-
-
-// Triple tap logo = go to admin analytics
-let _logoTaps=0,_logoTimer=null;
-function adminLogoTap(){
-  _logoTaps++;
-  clearTimeout(_logoTimer);
-  _logoTimer=setTimeout(()=>{ _logoTaps=0; },500);
-  if(_logoTaps>=3 && isAdmin()){
-    _logoTaps=0;
-    navTo('analytics');
-    toast('Admin panel ✓');
-  }
-}
-
-
-
-</script>
-</body>
-<
+            av.innerH
