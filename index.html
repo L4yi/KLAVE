@@ -602,6 +602,25 @@ option{background:var(--bg3);}
 .report-actions{display:flex;gap:8px;}
 .report-submit{flex:1;padding:12px;background:#ff4455;color:#fff;border:none;font-family:var(--H);font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;}
 .report-cancel{padding:12px 16px;background:transparent;border:1px solid var(--grey);color:var(--muted2);font-family:var(--M);font-size:10px;letter-spacing:1px;cursor:pointer;}
+
+/* ── SETTINGS SCREEN ── */
+.settings-wrap{padding:20px;}
+.settings-section{margin-bottom:28px;}
+.settings-section-title{font-family:var(--M);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding-bottom:10px;border-bottom:1px solid var(--grey);margin-bottom:14px;}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--grey);cursor:pointer;}
+.settings-row:last-child{border-bottom:none;}
+.settings-row-label{font-size:14px;font-weight:600;}
+.settings-row-sub{font-family:var(--M);font-size:9px;color:var(--muted2);letter-spacing:.5px;margin-top:3px;}
+.settings-row-arrow{color:var(--muted);font-size:16px;}
+.settings-toggle{width:44px;height:24px;background:var(--grey2);border-radius:12px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
+.settings-toggle.on{background:var(--blue);}
+.settings-toggle-knob{width:18px;height:18px;background:#fff;border-radius:50%;position:absolute;top:3px;left:3px;transition:left .2s;}
+.settings-toggle.on .settings-toggle-knob{left:23px;}
+.settings-back{display:flex;align-items:center;gap:10px;margin-bottom:20px;cursor:pointer;font-family:var(--M);font-size:10px;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;}
+.settings-back svg{width:16px;height:16px;}
+.danger-row{color:#ff4455;}
+.settings-input-row{padding:14px 0;border-bottom:1px solid var(--grey);}
+.settings-input-row:last-child{border-bottom:none;}
 </style>
 </head>
 <body>
@@ -892,6 +911,150 @@ option{background:var(--bg3);}
     </div>
   </div>
 
+  <!-- SETTINGS -->
+  <div class="screen" id="s-settings">
+    <div class="settings-wrap">
+      <div class="settings-back" onclick="navTo('profile')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        BACK TO PROFILE
+      </div>
+      <div style="font-size:22px;font-weight:800;letter-spacing:1px;margin-bottom:24px;">SETTINGS</div>
+
+      <!-- ACCOUNT -->
+      <div class="settings-section">
+        <div class="settings-section-title">ACCOUNT</div>
+        <div class="settings-row" onclick="openChangePassword()">
+          <div>
+            <div class="settings-row-label">Change Password</div>
+            <div class="settings-row-sub">Update your account password</div>
+          </div>
+          <div class="settings-row-arrow">›</div>
+        </div>
+        <div class="settings-row" onclick="openChangeEmail()">
+          <div>
+            <div class="settings-row-label">Change Email</div>
+            <div class="settings-row-sub" id="settings-current-email">—</div>
+          </div>
+          <div class="settings-row-arrow">›</div>
+        </div>
+      </div>
+
+      <!-- NOTIFICATIONS -->
+      <div class="settings-section">
+        <div class="settings-section-title">NOTIFICATIONS</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">New Sales</div>
+            <div class="settings-row-sub">Get notified when your beats sell</div>
+          </div>
+          <div class="settings-toggle on" id="toggle-sales" onclick="toggleSetting('toggle-sales')"><div class="settings-toggle-knob"></div></div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">NERO Tips</div>
+            <div class="settings-row-sub">Get pricing & marketing suggestions</div>
+          </div>
+          <div class="settings-toggle on" id="toggle-nero" onclick="toggleSetting('toggle-nero')"><div class="settings-toggle-knob"></div></div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Platform Updates</div>
+            <div class="settings-row-sub">New features and announcements</div>
+          </div>
+          <div class="settings-toggle" id="toggle-updates" onclick="toggleSetting('toggle-updates')"><div class="settings-toggle-knob"></div></div>
+        </div>
+      </div>
+
+      <!-- PRIVACY -->
+      <div class="settings-section">
+        <div class="settings-section-title">PRIVACY</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Public Profile</div>
+            <div class="settings-row-sub">Let others view your producer page</div>
+          </div>
+          <div class="settings-toggle on" id="toggle-public" onclick="toggleSetting('toggle-public')"><div class="settings-toggle-knob"></div></div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Show Earnings</div>
+            <div class="settings-row-sub">Display revenue on your profile</div>
+          </div>
+          <div class="settings-toggle" id="toggle-earnings" onclick="toggleSetting('toggle-earnings')"><div class="settings-toggle-knob"></div></div>
+        </div>
+      </div>
+
+      <!-- LEGAL -->
+      <div class="settings-section">
+        <div class="settings-section-title">LEGAL</div>
+        <div class="settings-row">
+          <div class="settings-row-label">Terms of Service</div>
+          <div class="settings-row-arrow">›</div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">Privacy Policy</div>
+          <div class="settings-row-arrow">›</div>
+        </div>
+      </div>
+
+      <!-- DANGER ZONE -->
+      <div class="settings-section">
+        <div class="settings-section-title">DANGER ZONE</div>
+        <div class="settings-row danger-row" onclick="confirmDeleteAccount()">
+          <div>
+            <div class="settings-row-label">Delete Account</div>
+            <div class="settings-row-sub">Permanently delete your account and data</div>
+          </div>
+          <div class="settings-row-arrow">›</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHANGE PASSWORD MODAL -->
+  <div class="report-modal" id="password-modal">
+    <div class="report-box">
+      <div class="report-title">CHANGE PASSWORD</div>
+      <div class="report-sub">Enter your current and new password.</div>
+      <div class="fg"><label class="fl">Current Password</label><input class="fi" id="cp-current" type="password" placeholder="••••••••"/></div>
+      <div class="fg"><label class="fl">New Password</label><input class="fi" id="cp-new" type="password" placeholder="••••••••"/></div>
+      <div class="auth-err" id="cp-err"></div>
+      <div class="report-actions">
+        <button class="report-cancel" onclick="closePasswordModal()">CANCEL</button>
+        <button class="report-submit" style="background:var(--blue);" onclick="submitPasswordChange()">UPDATE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHANGE EMAIL MODAL -->
+  <div class="report-modal" id="email-modal">
+    <div class="report-box">
+      <div class="report-title">CHANGE EMAIL</div>
+      <div class="report-sub">Enter your password and new email.</div>
+      <div class="fg"><label class="fl">Current Password</label><input class="fi" id="ce-pass" type="password" placeholder="••••••••"/></div>
+      <div class="fg"><label class="fl">New Email</label><input class="fi" id="ce-email" type="email" placeholder="newemail@email.com"/></div>
+      <div class="auth-err" id="ce-err"></div>
+      <div class="report-actions">
+        <button class="report-cancel" onclick="closeEmailModal()">CANCEL</button>
+        <button class="report-submit" style="background:var(--blue);" onclick="submitEmailChange()">UPDATE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE ACCOUNT MODAL -->
+  <div class="report-modal" id="delete-modal">
+    <div class="report-box">
+      <div class="report-title" style="color:#ff4455;">DELETE ACCOUNT</div>
+      <div class="report-sub">This cannot be undone. All your beats, sales history, and profile data will be permanently deleted.</div>
+      <div class="fg"><label class="fl">Enter your password to confirm</label><input class="fi" id="del-pass" type="password" placeholder="••••••••"/></div>
+      <div class="auth-err" id="del-err"></div>
+      <div class="report-actions">
+        <button class="report-cancel" onclick="closeDeleteModal()">CANCEL</button>
+        <button class="report-submit" onclick="submitDeleteAccount()">DELETE FOREVER</button>
+      </div>
+    </div>
+  </div>
+
   <!-- PROFILE -->
   <div class="screen" id="s-profile">
     <div class="profile-wrap">
@@ -915,6 +1078,7 @@ option{background:var(--bg3);}
       <div class="fg"><label class="fl">Display Name</label><input class="fi" id="pf-name" type="text" placeholder="Your name"/></div>
       <div class="fg"><label class="fl">Bio</label><textarea class="fi" id="pf-bio" rows="3" style="resize:none" placeholder="Producer from..."></textarea></div>
       <button class="pub-btn" onclick="saveProfile()">SAVE CHANGES</button>
+      <button class="pub-btn" onclick="navTo('settings')" style="background:var(--bg3);border:1px solid var(--grey2);box-shadow:none;margin-top:12px;">⚙ SETTINGS</button>
       <button class="sign-out-btn" onclick="doSignOut()">SIGN OUT</button>
     </div>
   </div>
@@ -1201,6 +1365,9 @@ function navTo(s){
   if(ni) ni.classList.add('on');
   if(s==='profile') loadProfile();
   if(s==='search') renderSearch();
+  if(s==='settings'&&window._currentUser){
+    document.getElementById('settings-current-email').textContent=window._currentUser.email;
+  }
   if(s==='analytics') loadAnalyticsProducer();
   if(s==='analytics' && isAdmin()) switchAnalytics('admin', document.querySelector('.at-btn'));
   closeGate();
@@ -1590,185 +1757,4 @@ async function publishBeat(){
     }catch(e){
       toast('Upload failed: '+e.message);
       btn.textContent='PUBLISH BEAT';btn.disabled=false;
-      document.getElementById('upload-progress').style.display='none';
-      return;
-    }
-    if(cd.error){
-      toast('Error: '+cd.error);
-      btn.textContent='PUBLISH BEAT';btn.disabled=false;
-      document.getElementById('upload-progress').style.display='none';
-      return;
-    }
-    if(!cd.secure_url){progressWrap.style.display='none';toast('Audio upload failed');btn.textContent='PUBLISH BEAT';btn.disabled=false;return;}
-    upStatus.textContent='SAVING BEAT...';upFill.style.width='100%';
-    await window._addDoc(window._collection(window._db,'beats'),{title:title.toUpperCase(),bpm:Number(bpm)||0,key,genre:genre.toLowerCase(),mood:mood.toLowerCase(),price:Number(price),exclPrice:Number(excl)||0,prod:window._currentUser.email.split('@')[0],producerId:window._currentUser.uid,audioUrl:cd.secure_url,duration:cd.duration||0,createdAt:window._ts()});
-    toast('Beat published ✓');
-    document.getElementById('af').value='';document.getElementById('uh-fname').textContent='';
-    document.getElementById('upload-hero').classList.remove('has-file');
-    document.getElementById('nero-analyze').style.display='none';
-    document.getElementById('upload-progress').style.display='none';
-    document.getElementById('up-fill').style.width='0%';
-    document.getElementById('up-title').value='';document.getElementById('up-bpm').value='';document.getElementById('up-price').value='';
-    setTimeout(()=>navTo('home'),1200);
-  }catch(e){
-    if(e.message==='CANCELLED'){
-      toast('Upload cancelled');
-    } else {
-      toast('Failed to publish. Try again.');console.error(e);
-    }
-  }
-  // reset UI
-  document.getElementById('upload-progress').style.display='none';
-  document.getElementById('up-fill').style.width='0%';
-  btn.textContent='PUBLISH BEAT';btn.disabled=false;
-}
-
-// ── AUTH ──
-function authTab(btn,t){
-  document.querySelectorAll('.at').forEach(x=>x.classList.remove('on'));btn.classList.add('on');
-  document.getElementById('role-wrap').style.display=t==='up'?'block':'none';
-  const tc=document.getElementById('terms-check');
-  if(tc) tc.style.display=t==='up'?'flex':'none';
-  _authMode=t;clearErr();
-}
-function pickRole(b){document.querySelectorAll('.rbtn').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
-function showErr(m){const e=document.getElementById('auth-err');e.textContent=m;e.style.display='block';}
-function clearErr(){const e=document.getElementById('auth-err');if(e)e.style.display='none';}
-function showAuthForm(){
-  document.getElementById('verify-wrap').style.display='none';
-  document.getElementById('auth-form-wrap').style.display='block';
-  document.querySelectorAll('.at').forEach(x=>x.classList.remove('on'));
-  document.querySelectorAll('.at')[0].classList.add('on');
-  document.getElementById('role-wrap').style.display='none';
-  _authMode='in';
-}
-async function resendVerify(){
-  const btn=document.getElementById('resend-btn');btn.textContent='SENDING...';btn.disabled=true;
-  try{
-    const pass=document.getElementById('a-pass').value.trim();
-    if(!pass){toast('Re-enter password to resend');btn.textContent='RESEND EMAIL';btn.disabled=false;return;}
-    const c=await window._signIn(window._auth,_pendingEmail,pass);
-    await window._sendVerification(c.user);
-    await window._signOut(window._auth);
-    toast('Verification email sent ✓');
-  }catch(e){toast('Could not resend. Try again.');}
-  btn.textContent='RESEND EMAIL';btn.disabled=false;
-}
-async function doGoogleAuth(){
-  clearErr();
-  try{
-    const {getAuth, GoogleAuthProvider, signInWithPopup} = await import('https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js');
-    const auth = window._auth || getAuth();
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({prompt:'select_account'});
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-    // Save user to Firestore if new
-    if(window._db){
-      await window._setDoc(window._doc(window._db,'users',user.uid),{
-        email:user.email,
-        displayName:user.displayName||'',
-        role:'producer',
-        photoURL:user.photoURL||'',
-        createdAt:window._ts()
-      },{merge:true});
-    }
-    toast('Welcome to KLAVE ✓');
-    setTimeout(()=>{
-      if(isAdmin(window._currentUser)) navTo('analytics');
-      else navTo('home');
-    },800);
-  }catch(err){
-    if(err.code==='auth/popup-closed-by-user') return;
-    if(err.code==='auth/popup-blocked'){
-      showErr('Popup blocked. Allow popups for this site.');return;
-    }
-    showErr('Google sign-in failed. Try again.');
-    console.error(err);
-  }
-}
-
-async function doAuth(){
-  clearErr();
-  const email=document.getElementById('a-email').value.trim();
-  const pass=document.getElementById('a-pass').value.trim();
-  if(!email){showErr('Enter your email');return;}
-  if(!pass){showErr('Enter your password');return;}
-  if(_authMode==='up'){
-    const checkbox=document.getElementById('copy-checkbox');
-    if(!checkbox||!checkbox.checked){
-      showErr('Please agree to the Terms of Service');
-      return;
-    }
-  }
-  const btn=document.getElementById('auth-btn');btn.textContent='LOADING...';btn.disabled=true;
-  try{
-    if(_authMode==='up'){
-      const tc=document.getElementById('terms-checkbox');
-      if(!tc||!tc.checked){
-        document.getElementById('terms-check').classList.add('required');
-        showErr('Please agree to the Terms of Service');
-        btn.textContent='ENTER';btn.disabled=false;return;
-      }
-      const role=document.querySelector('.rbtn.on')?.textContent?.toLowerCase()||'buyer';
-      const c=await window._createUser(window._auth,email,pass);
-      await window._sendVerification(c.user);
-      await window._setDoc(window._doc(window._db,'users',c.user.uid),{email,role,createdAt:window._ts()});
-      await window._signOut(window._auth);
-      _pendingEmail=email;
-      document.getElementById('auth-form-wrap').style.display='none';
-      document.getElementById('verify-wrap').style.display='block';
-      document.getElementById('vb-email').textContent=email;
-    } else {
-      const c=await window._signIn(window._auth,email,pass);
-      if(!c.user.emailVerified){await window._signOut(window._auth);showErr('Email not verified. Check your inbox.');btn.textContent='ENTER';btn.disabled=false;return;}
-      toast('Welcome back ✓');
-      setTimeout(()=>{
-        if(isAdmin(window._currentUser)) navTo('analytics');
-        else navTo('home');
-      },800);
-    }
-  }catch(err){
-    const msg=err.code==='auth/email-already-in-use'?'Email already registered':err.code==='auth/wrong-password'||err.code==='auth/invalid-credential'?'Wrong password':err.code==='auth/user-not-found'?'No account found':err.code==='auth/weak-password'?'Password needs 6+ characters':err.code==='auth/invalid-email'?'Invalid email':'Something went wrong';
-    showErr(msg);
-  }
-  btn.textContent='ENTER';btn.disabled=false;
-}
-async function doSignOut(){await window._signOut(window._auth);toast('Signed out');navTo('home');}
-
-// ── BUY ──
-function doBuy(id,e){if(e)e.stopPropagation();if(!window._currentUser){gated();return;}if(isAdmin()){toast('Admin — purchase bypassed ✓');return;}toast('Opening checkout...');}
-
-// ── PROFILE ──
-function loadProfile(){
-  const user=window._currentUser;if(!user)return;
-  const uname=user.email.split('@')[0];
-  const av=document.getElementById('prof-av');
-  document.getElementById('prof-email').textContent=user.email;
-
-  // Show Google photo if available
-  if(user.photoURL){
-    av.innerHTML='<img src="'+user.photoURL+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
-  } else {
-    av.textContent=uname[0].toUpperCase();
-  }
-
-  // Pull saved display name from Firestore
-  if(window._db){
-    window._getDocs(window._collection(window._db,'beats')).then(snap=>{
-      const mine=snap.docs.filter(d=>d.data().producerId===user.uid);
-      document.getElementById('ps-b').textContent=mine.length;
-    }).catch(()=>{});
-
-    // Get user profile doc
-    import('https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js').then(({getDoc,doc})=>{
-      getDoc(doc(window._db,'users',user.uid)).then(snap=>{
-        if(snap.exists()){
-          const data=snap.data();
-          const name=data.displayName||uname;
-          document.getElementById('prof-name').textContent=name;
-          document.getElementById('pf-name').value=name;
-          if(data.bio) document.getElementById('pf-bio').value=data.bio;
-          // Show saved photo if exists
-          if(data.photoURL&&!user.photoURL){
-            av.innerH
+      document.getElementById('upload-progress').s
