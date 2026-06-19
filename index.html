@@ -34,7 +34,7 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup, EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateEmail, deleteUser } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
   import { getFirestore, collection, addDoc, getDocs, setDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
   const app = initializeApp({
@@ -52,6 +52,11 @@
   window._auth=auth; window._db=db;
   window._googleProvider=new GoogleAuthProvider();
   window._signInWithPopup=signInWithPopup;
+  window._EmailAuthProvider=EmailAuthProvider;
+  window._reauthenticate=reauthenticateWithCredential;
+  window._updatePassword=updatePassword;
+  window._updateEmail=updateEmail;
+  window._deleteUser=deleteUser;
   window._createUser=createUserWithEmailAndPassword;
   window._signIn=signInWithEmailAndPassword;
   window._signOut=signOut;
@@ -1751,10 +1756,4 @@ async function publishBeat(){
         body:JSON.stringify({file:base64,fileName:audioFile.name}),
         signal:controller.signal
       });
-      clearTimeout(timeout);
-      cd=await res.json();
-      upFill.style.width='90%';upPct.textContent='90%';upStatus.textContent='PROCESSING...';
-    }catch(e){
-      toast('Upload failed: '+e.message);
-      btn.textContent='PUBLISH BEAT';btn.disabled=false;
-      document.getElementById('upload-progress').s
+      clearT
