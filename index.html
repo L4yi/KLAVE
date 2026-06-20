@@ -629,6 +629,8 @@ option{background:var(--bg3);}
 </style>
 </head>
 <body>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init();</script>
 
 
 
@@ -1753,7 +1755,4 @@ async function publishBeat(){
       const res=await fetch('/api/upload',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({file:base64,fileName:audioFile.name}),
-        signal:controller.signal
-      });
-      clearT
+        body:JSON.stringify({file
