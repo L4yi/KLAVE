@@ -629,8 +629,25 @@ option{background:var(--bg3);}
 </style>
 </head>
 <body>
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
+<div id="debug-overlay" style="position:fixed;top:60px;left:10px;right:10px;background:#1a0000;border:1px solid #ff4455;color:#ff8888;font-family:monospace;font-size:11px;padding:10px;z-index:999999;display:none;max-height:300px;overflow-y:auto;white-space:pre-wrap;"></div>
+<script>
+(function(){
+  var overlay=null;
+  function showError(msg){
+    if(!overlay) overlay=document.getElementById('debug-overlay');
+    if(overlay){
+      overlay.style.display='block';
+      overlay.textContent += msg + '\n\n';
+    }
+  }
+  window.addEventListener('error', function(e){
+    showError('JS ERROR: ' + e.message + ' at ' + (e.filename||'?') + ':' + (e.lineno||'?'));
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    showError('PROMISE REJECTION: ' + (e.reason && e.reason.message ? e.reason.message : JSON.stringify(e.reason)));
+  });
+})();
+</script>
 
 
 
@@ -1733,26 +1750,4 @@ async function publishBeat(){
     const fd=new FormData();
     fd.append('file',audioFile);
     fd.append('upload_preset','klave_beats');
-    fd.append('resource_type','auto');
-    let cd;
-    try{
-      upStatus.textContent='UPLOADING AUDIO...';
-      upFill.style.width='20%';upPct.textContent='20%';
-
-      // Convert file to base64
-      const base64=await new Promise((resolve,reject)=>{
-        const reader=new FileReader();
-        reader.onload=()=>resolve(reader.result);
-        reader.onerror=reject;
-        reader.readAsDataURL(audioFile);
-      });
-
-      upFill.style.width='40%';upPct.textContent='40%';
-      upStatus.textContent='SENDING TO SERVER...';
-
-      const controller=new AbortController();
-      const timeout=setTimeout(()=>controller.abort(),120000);
-      const res=await fetch('/api/upload',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({file
+    fd.append('resour
