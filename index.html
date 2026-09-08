@@ -28,18 +28,6 @@
 <link rel="manifest" href="/manifest.json"/>
 <link rel="apple-touch-icon" href="/KLAVE_Discord_PFP.png"/>
 <title>KLAVE</title>
-<meta name="description" content="KLAVE — discover, buy, and sell beats.">
-<meta property="og:type" content="website">
-<meta property="og:title" content="KLAVE">
-<meta property="og:description" content="KLAVE — discover, buy, and sell beats.">
-<meta property="og:image" content="/klave-og.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:type" content="image/jpeg">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="KLAVE">
-<meta name="twitter:description" content="KLAVE — discover, buy, and sell beats.">
-<meta name="twitter:image" content="/klave-og.jpg">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -47,7 +35,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup, EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateEmail, deleteUser } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, setDoc, doc, deleteDoc, serverTimestamp, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, setDoc, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
   const app = initializeApp({
     apiKey:"AIzaSyAXIqvcrGXA-__O5FWot1WvbMCyKqoM2UA",
@@ -76,8 +64,6 @@
   window._collection=collection;
   window._addDoc=addDoc;
   window._getDocs=getDocs;
-  window._getDoc=getDoc;
-  window._writeBatch=writeBatch;
   window._setDoc=setDoc;
   window._deleteDoc=deleteDoc;
   window._doc=doc;
@@ -263,6 +249,8 @@ body::before{
 .beat-card:active .bc-play-over{opacity:1;}
 .bc-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .bc-prod{font-family:var(--M);font-size:9px;color:var(--muted2);letter-spacing:1px;margin-top:2px;}
+.prod-link{cursor:pointer;}
+.prod-link:active{opacity:.6;}
 .bc-price{font-size:13px;font-weight:700;color:var(--blue);margin-top:4px;}
 
 /* waveform card art */
@@ -364,6 +352,7 @@ option{background:var(--bg3);}
 .pub-btn{width:100%;padding:16px;font-family:var(--H);font-size:16px;font-weight:700;letter-spacing:3px;background:var(--blue);color:#fff;border:none;cursor:pointer;transition:background .15s;margin-top:8px;box-shadow:0 4px 20px var(--blueglow);}
 .pub-btn:active{background:var(--blue2);}
 .pub-btn:disabled{opacity:.5;cursor:not-allowed;}
+.pub-btn.following-on{background:transparent;border:1px solid var(--blue);color:var(--blue);box-shadow:none;}
 .upload-progress{margin-bottom:16px;display:none;}
 .up-label{display:flex;justify-content:space-between;font-family:var(--M);font-size:9px;color:var(--muted2);letter-spacing:1px;margin-bottom:8px;}
 .up-bar{height:3px;background:var(--grey2);overflow:hidden;}
@@ -861,6 +850,7 @@ option{background:var(--bg3);}
     <div class="upload-wrap">
       <div style="font-size:22px;font-weight:800;letter-spacing:1px;margin-bottom:4px;">UPLOAD BEAT</div>
       <div style="font-family:var(--M);font-size:9px;color:var(--muted2);letter-spacing:2px;margin-bottom:20px;">// drop your file. nero handles the rest.</div>
+      <div class="checkout-notice" id="upload-tier-status" style="display:none;"></div>
       <div class="upload-hero" id="upload-hero" onclick="document.getElementById('af').click()">
         <div class="uh-icon">🎵</div>
         <div class="uh-title">Drop Your Beat</div>
@@ -886,12 +876,12 @@ option{background:var(--bg3);}
         <div class="lic-row">
           <div class="lc on" onclick="pickL(this)"><div class="lc-n">BASIC</div><div class="lc-d">MP3<br>Non-excl.</div></div>
           <div class="lc" onclick="pickL(this)"><div class="lc-n">PREMIUM</div><div class="lc-d">WAV+stems<br>Non-excl.</div></div>
-          <div class="lc" onclick="pickL(this)"><div class="lc-n">EXCL.</div><div class="lc-d">Full rights<br>Exclusive</div></div>
+          <div class="lc" id="lc-excl" onclick="pickL(this)"><div class="lc-n">EXCL.</div><div class="lc-d">Full rights<br>Exclusive</div></div>
         </div>
       </div>
       <div class="fr">
         <div class="fg"><label class="fl">Basic ($)</label><input class="fi" id="up-price" type="number" placeholder="30"/></div>
-        <div class="fg"><label class="fl">Exclusive ($)</label><input class="fi" id="up-excl" type="number" placeholder="300"/></div>
+        <div class="fg" id="up-excl-wrap"><label class="fl">Exclusive ($)</label><input class="fi" id="up-excl" type="number" placeholder="300"/></div>
       </div>
       <div class="file-warn" id="file-warn" style="display:none;background:#1a0a0a;border:1px solid #ff4455;padding:12px 14px;margin-bottom:14px;">
         <div style="font-family:var(--M);font-size:9px;color:#ff4455;letter-spacing:1px;margin-bottom:4px;">// LARGE FILE WARNING</div>
@@ -1115,7 +1105,7 @@ option{background:var(--bg3);}
             <div class="settings-row-icon" style="color:#ff4455;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></div>
             <div class="settings-row-body">
               <div class="settings-row-label" style="color:#ff4455;">Delete Account</div>
-              <div class="settings-row-sub">Permanently delete your sign-in account</div>
+              <div class="settings-row-sub">Permanently remove your account and data</div>
             </div>
             <div class="settings-row-arrow">›</div>
           </div>
@@ -1208,6 +1198,29 @@ option{background:var(--bg3);}
   </div>
 
   <!-- AUTH -->
+  <div class="screen" id="s-producer-view">
+    <div class="profile-wrap">
+      <button class="pub-btn" style="margin-bottom:16px;background:transparent;border:1px solid var(--grey2);color:var(--muted2);" onclick="navTo('home')">← BACK</button>
+      <div class="prof-banner">
+        <div class="prof-av" id="pv-av">?</div>
+        <div>
+          <div class="prof-name" id="pv-name">—</div>
+          <div class="prof-role" id="pv-role">Producer</div>
+        </div>
+      </div>
+      <div class="prof-stats">
+        <div class="ps"><div class="ps-val" id="pv-beats-count">0</div><div class="ps-lab">Beats</div></div>
+        <div class="ps"><div class="ps-val" id="pv-followers">0</div><div class="ps-lab">Followers</div></div>
+        <div class="ps"><div class="ps-val" id="pv-following">0</div><div class="ps-lab">Following</div></div>
+      </div>
+      <button class="pub-btn" id="pv-follow-btn" onclick="toggleFollowProducer()" style="display:none;">FOLLOW</button>
+      <div class="sec-divider">BIO</div>
+      <div id="pv-bio" style="padding:14px 4px;color:var(--grey);font-size:13px;line-height:1.5;">No bio yet.</div>
+      <div class="sec-divider">BEATS</div>
+      <div id="pv-beats-list"></div>
+    </div>
+  </div>
+
   <div class="screen" id="s-auth">
     <div class="auth-wrap">
       <div class="auth-box">
@@ -1443,6 +1456,11 @@ const audioEl=new Audio();
 // are live. producerTier is stamped on the beat doc at publish time (see
 // publishBeat) and locked server-side in firestore.rules.
 const FREE_PREVIEW_SECONDS=30;
+// Free-tier producer caps — shared by publishBeat() and the upload-screen
+// status UI (refreshUploadTierUI). Change this one place if the plan's
+// upload cap ever changes; firestore.rules has its own copy (freeBeatLimit())
+// as the actual source of truth — keep both in sync if you change it there.
+const FREE_BEAT_LIMIT=3;
 function previewCapped(beat){
   if(!beat||beat.producerTier!=='free') return false;
   if(isAdmin()) return false;
@@ -1520,6 +1538,8 @@ function renderProducersStrip(list){
     const d=document.createElement('div');
     d.className='producer-chip';
     d.innerHTML='<div class="producer-chip-av">'+(b.prod?escapeHtml(b.prod[0]).toUpperCase():'?')+'</div><div class="producer-chip-name">'+escapeHtml(b.prod)+'</div><div class="producer-chip-count">'+count+' beat'+(count!==1?'s':'')+'</div>';
+    d.style.cursor='pointer';
+    d.onclick=(e)=>viewProducer(b.producerId,b.prod,e);
     ps.appendChild(d);
   });
 }
@@ -1536,7 +1556,7 @@ function renderBeatCards(list){
     d.className='beat-card';d.style.animationDelay=(i*.06)+'s';
     const badge = b.exclPrice ? '<div class="bc-badge">Premium</div>' : (i===0 ? '<div class="bc-badge">New</div>' : '');
     d.innerHTML='<div class="bc-art">'+badge+'<div class="bc-wave">'+makeWaveBars(24)+'</div><div class="bc-play-over">▶</div></div>'
-      +'<div class="bc-title">'+escapeHtml(b.title)+'</div><div class="bc-prod">prod. '+escapeHtml(b.prod)+' · '+(b.plays||0)+' plays</div>'
+      +'<div class="bc-title">'+escapeHtml(b.title)+'</div><div class="bc-prod">prod. <span class="prod-link" data-uid="'+escapeHtml(b.producerId||'')+'" data-name="'+escapeHtml(b.prod)+'" onclick="viewProducer(this.dataset.uid,this.dataset.name,event)">'+escapeHtml(b.prod)+'</span> · '+(b.plays||0)+' plays</div>'
       +'<div class="bc-tiers"><div>MP3<b>$'+b.price+'</b></div>'+(b.exclPrice?'<div class="excl">EXCL<b>$'+b.exclPrice+'</b></div>':'')+'</div>';
     d.onclick=()=>playBeat(b.id||i);
     cs.appendChild(d);
@@ -1576,7 +1596,7 @@ function renderHome(){
     const actionBtn = isMine
       ? '<button class="report-btn" title="Delete" onclick="deleteBeat(\''+(b.id||'')+'\',event)"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>'
       : '<button class="report-btn" data-title="'+escapeHtml(b.title)+'" onclick="openReport(this.dataset.title,event)" title="Report"><svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></button>';
-    r.innerHTML='<div class="bl-num">'+String(i+1).padStart(2,'0')+'</div><div class="bl-art"><div class="bc-wave">'+makeWaveBars(12)+'</div></div><div class="bl-info"><div class="bl-title">'+escapeHtml(b.title)+exclTag+'</div><div class="bl-prod">prod. '+escapeHtml(b.prod)+' • '+escapeHtml(b.genre)+'</div></div><div class="bl-price">$'+b.price+'</div><button class="bl-buy" onclick="doBuy(\''+(b.id||i)+'\',event)">BUY</button>'+actionBtn;
+    r.innerHTML='<div class="bl-num">'+String(i+1).padStart(2,'0')+'</div><div class="bl-art"><div class="bc-wave">'+makeWaveBars(12)+'</div></div><div class="bl-info"><div class="bl-title">'+escapeHtml(b.title)+exclTag+'</div><div class="bl-prod">prod. <span class="prod-link" data-uid="'+escapeHtml(b.producerId||'')+'" data-name="'+escapeHtml(b.prod)+'" onclick="viewProducer(this.dataset.uid,this.dataset.name,event)">'+escapeHtml(b.prod)+'</span> • '+escapeHtml(b.genre)+'</div></div><div class="bl-price">$'+b.price+'</div><button class="bl-buy" onclick="doBuy(\''+(b.id||i)+'\',event)">BUY</button>'+actionBtn;
     r.addEventListener('click',e=>{ if(e.target.classList.contains('bl-buy')) return; playBeat(b.id||i); });
     bl.appendChild(r);
   });
@@ -1597,7 +1617,7 @@ function renderSearch(list){
     const actionBtn = isMine
       ? `<button class="report-btn" title="Delete" onclick="deleteBeat('${b.id||''}',event)"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>`
       : '';
-    r.innerHTML=`<div class="bl-num">${String(i+1).padStart(2,'0')}</div><div class="bl-art"><div class="bc-wave">${makeWaveBars(12)}</div></div><div class="bl-info"><div class="bl-title">${escapeHtml(b.title)}${exclTag}</div><div class="bl-prod">prod. ${escapeHtml(b.prod)} • ${escapeHtml(b.genre)}</div></div><div class="bl-price">$${b.price}</div><button class="bl-buy" onclick="doBuy('${b.id||i}',event)">BUY</button>${actionBtn}`;
+    r.innerHTML=`<div class="bl-num">${String(i+1).padStart(2,'0')}</div><div class="bl-art"><div class="bc-wave">${makeWaveBars(12)}</div></div><div class="bl-info"><div class="bl-title">${escapeHtml(b.title)}${exclTag}</div><div class="bl-prod">prod. <span class="prod-link" data-uid="${escapeHtml(b.producerId||'')}" data-name="${escapeHtml(b.prod)}" onclick="viewProducer(this.dataset.uid,this.dataset.name,event)">${escapeHtml(b.prod)}</span> • ${escapeHtml(b.genre)}</div></div><div class="bl-price">$${b.price}</div><button class="bl-buy" onclick="doBuy('${b.id||i}',event)">BUY</button>${actionBtn}`;
     r.addEventListener('click',e=>{ if(e.target.classList.contains('bl-buy')) return; playBeat(b.id||i); });
     sr.appendChild(r);
   });
@@ -1614,15 +1634,8 @@ function renderSearch(list){
 }
 
 function searchBeats(q){
-  const needle=String(q||'').trim().toLowerCase();
-  if(!needle){ renderSearch(getBeats()); return; }
-  const list=getBeats().filter(b=>{
-    const title=String(b.title||'').toLowerCase();
-    const prod=String(b.prod||'').toLowerCase();
-    const genre=String(b.genre||'').toLowerCase();
-    return title.includes(needle)||prod.includes(needle)||genre.includes(needle);
-  });
-  renderSearch(list);
+  const list=getBeats().filter(b=>b.title.toLowerCase().includes(q.toLowerCase())||b.prod.toLowerCase().includes(q.toLowerCase())||b.genre.toLowerCase().includes(q.toLowerCase()));
+  renderSearch(q?list:getBeats());
 }
 
 // ── NAV ──
@@ -1650,7 +1663,44 @@ function navTo(s){
     }
   }
   if(s==='search') renderSearch();
+  if(s==='upload') refreshUploadTierUI();
   closeGate();
+}
+
+// Shows "X of 3 free uploads used" and hides exclusive-pricing fields for
+// free-tier producers on the upload screen — the friendly, visible version
+// of the same limits publishBeat()/firestore.rules enforce for real.
+async function refreshUploadTierUI(){
+  const statusEl=document.getElementById('upload-tier-status');
+  const exclWrap=document.getElementById('up-excl-wrap');
+  const exclChip=document.getElementById('lc-excl');
+  const pubBtn=document.getElementById('pub-btn');
+  if(!statusEl||!pubBtn) return;
+  if(!window._currentUser){ statusEl.style.display='none'; return; }
+  let tier='free',beatsCount=0;
+  try{
+    const {getDoc,doc}=await import('https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js');
+    const snap=await getDoc(doc(window._db,'users',window._currentUser.uid));
+    if(snap.exists()){ const d=snap.data(); tier=d.tier||'free'; beatsCount=d.beatsCount||0; }
+  }catch(e){ console.error('refreshUploadTierUI:',e); }
+  if(tier!=='free'){
+    statusEl.style.display='none';
+    if(exclWrap) exclWrap.style.display='block';
+    if(exclChip) exclChip.style.display='block';
+    pubBtn.disabled=false;
+    return;
+  }
+  if(exclWrap){ exclWrap.style.display='none'; document.getElementById('up-excl').value=''; }
+  if(exclChip) exclChip.style.display='none';
+  const remaining=Math.max(0,FREE_BEAT_LIMIT-beatsCount);
+  statusEl.style.display='block';
+  if(remaining>0){
+    statusEl.textContent='Free plan — '+beatsCount+' of '+FREE_BEAT_LIMIT+' uploads used. Exclusive pricing unlocks on a paid plan.';
+    pubBtn.disabled=false;
+  } else {
+    statusEl.textContent='Free plan limit reached ('+FREE_BEAT_LIMIT+' beats). Upgrade to upload more.';
+    pubBtn.disabled=true;
+  }
 }
 
 function gated(s){
@@ -1941,7 +1991,11 @@ function onAuthChange(user){
   const msgs=document.getElementById('np-msgs');
   if(user){
     const uname=user.email.split('@')[0];
-    av.textContent=uname[0].toUpperCase();
+    if(user.photoURL){
+      av.innerHTML='<img src="'+escapeHtml(user.photoURL)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
+    } else {
+      av.textContent=uname[0].toUpperCase();
+    }
     if(neroIn) neroIn.style.display='block';
     if(neroGate) neroGate.style.display='none';
     if(msgs && msgs.children.length<=1){
@@ -2015,25 +2069,6 @@ async function deleteBeat(id,e){
   }
 }
 let _lastCountedPlayId=null;
-async function countPlayOnce(beatId){
-  const user=window._currentUser;
-  if(!user||!window._db||!beatId||_lastCountedPlayId===beatId) return;
-  try{
-    const {doc,writeBatch,increment}=await import('https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js');
-    const batch=writeBatch(window._db);
-    const eventId=user.uid+'_'+beatId;
-    const eventRef=doc(window._db,'playEvents',eventId);
-    const beatRef=doc(window._db,'beats',beatId);
-    batch.set(eventRef,{userId:user.uid,beatId:beatId,createdAt:window._ts()});
-    batch.update(beatRef,{plays:increment(1)});
-    await batch.commit();
-    _lastCountedPlayId=beatId;
-  }catch(e){
-    // A duplicate event is expected after the first successful play.
-    // Ignore it so playback itself is never interrupted.
-    console.debug('Play count not recorded:',e);
-  }
-}
 function playBeat(id){
   const list=getBeats();
   const b=list.find(x=>(x.id||list.indexOf(x))===id);
@@ -2048,10 +2083,14 @@ function playBeat(id){
   audioEl.currentTime=0;
   audioEl.play().then(()=>{
     playing=true;document.getElementById('mp-playbtn').textContent='⏸';
-    // Count at most once per signed-in user per beat. The Firestore rules
-    // enforce this server-side with a permanent playEvents/{uid}_{beatId}
-    // record, so the client-side guard is only a UX optimization.
-    if(window._currentUser && b.id){ countPlayOnce(b.id); }
+    // Count a play once per genuine playback start — not on every
+    // pause/resume toggle of the same beat.
+    if(window._currentUser && b.id && _lastCountedPlayId!==b.id){
+      _lastCountedPlayId=b.id;
+      import('https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js').then(({updateDoc,doc,increment})=>{
+        updateDoc(doc(window._db,'beats',b.id),{plays:increment(1)}).catch(()=>{});
+      });
+    }
   }).catch(e=>{
     console.error('Playback failed:',e);
     toast('Playback failed: '+e.message);
@@ -2154,7 +2193,6 @@ async function publishBeat(){
   // price. This is just the fast, friendly pre-check so a free user doesn't
   // waste a Cloudinary upload — firestore.rules (validBeat/withinFreeTierLimits)
   // is what actually enforces it.
-  const FREE_BEAT_LIMIT=3;
   let _tier='free',_beatsCount=0;
   try{
     const {getDoc,doc}=await import('https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js');
@@ -2241,6 +2279,7 @@ async function publishBeat(){
     await batch.commit();
     upFill.style.width='100%';upPct.textContent='100%';
     if(typeof window._loadBeats==='function')await window._loadBeats();
+    refreshUploadTierUI();
     toast('Beat published ✓');
     document.getElementById('af').value='';document.getElementById('uh-fname').textContent='';
     document.getElementById('upload-hero').classList.remove('has-file');
@@ -2299,20 +2338,15 @@ async function doGoogleAuth(){
     window._googleProvider.setCustomParameters({prompt:'select_account'});
     const result = await window._signInWithPopup(window._auth, window._googleProvider);
     const user = result.user;
-    // Save a Google profile without silently turning every Google user into
-    // a producer. Preserve an existing role; new Google accounts start as buyers.
+    // Save user to Firestore if new
     if(window._db){
-      const userRef=window._doc(window._db,'users',user.uid);
-      const existing=await window._getDoc(userRef);
-      const existingData=existing.exists()?existing.data():{};
-      const profile={
+      await window._setDoc(window._doc(window._db,'users',user.uid),{
         email:user.email,
-        displayName:user.displayName||existingData.displayName||'',
-        photoURL:user.photoURL||existingData.photoURL||''
-      };
-      if(!existing.exists() || !existingData.role) profile.role='buyer';
-      if(!existing.exists()) profile.createdAt=window._ts();
-      await window._setDoc(userRef,profile,{merge:true});
+        displayName:user.displayName||'',
+        role:'producer',
+        photoURL:user.photoURL||'',
+        createdAt:window._ts()
+      },{merge:true});
     }
     toast('Welcome to KLAVE ✓');
     setTimeout(()=>{
@@ -2459,6 +2493,101 @@ async function submitCheckout(){
 // Back-compat alias: buy buttons in the beat list rows call doBuy(id,event)
 function doBuy(id,e){ openCheckout(id,e); }
 
+// ── PRODUCER PROFILE (public view) ──
+let _viewedProducerUid=null;
+function followDocId(targetUid){ return window._currentUser.uid+'_'+targetUid; }
+
+async function viewProducer(uid,fallbackName,e){
+  if(e){e.stopPropagation();if(e.preventDefault)e.preventDefault();}
+  if(!uid){toast('Producer info unavailable');return;}
+  _viewedProducerUid=uid;
+  navTo('producer-view');
+  const av=document.getElementById('pv-av');
+  const nameEl=document.getElementById('pv-name');
+  const bioEl=document.getElementById('pv-bio');
+  av.textContent=fallbackName?fallbackName[0].toUpperCase():'?';
+  nameEl.textContent=fallbackName||'—';
+  bioEl.textContent='Loading…';
+  document.getElementById('pv-followers').textContent='—';
+  document.getElementById('pv-following').textContent='—';
+  document.getElementById('pv-follow-btn').style.display='none';
+  const ownBeats=getBeats().filter(b=>b.producerId===uid);
+  document.getElementById('pv-beats-count').textContent=ownBeats.length;
+  renderProducerBeats(ownBeats);
+  try{
+    const {getDoc,doc,collection,getDocs,query,where}=await import('https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js');
+    const uSnap=await getDoc(doc(window._db,'users',uid));
+    const ud=uSnap.exists()?uSnap.data():{};
+    const displayName=ud.displayName||fallbackName||'Producer';
+    nameEl.textContent=displayName;
+    bioEl.textContent=ud.bio||'No bio yet.';
+    av.innerHTML=ud.photoURL
+      ? '<img src="'+escapeHtml(ud.photoURL)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>'
+      : escapeHtml((displayName[0]||'?').toUpperCase());
+    const followsRef=collection(window._db,'follows');
+    getDocs(query(followsRef,where('followingId','==',uid))).then(snap=>{
+      document.getElementById('pv-followers').textContent=snap.size;
+    }).catch(()=>{});
+    getDocs(query(followsRef,where('followerId','==',uid))).then(snap=>{
+      document.getElementById('pv-following').textContent=snap.size;
+    }).catch(()=>{});
+    if(window._currentUser && window._currentUser.uid!==uid){
+      const btn=document.getElementById('pv-follow-btn');
+      btn.style.display='block';
+      const fSnap=await getDoc(doc(window._db,'follows',followDocId(uid)));
+      if(fSnap.exists()){ btn.textContent='FOLLOWING';btn.classList.add('following-on');btn.dataset.following='1'; }
+      else { btn.textContent='FOLLOW';btn.classList.remove('following-on');btn.dataset.following='0'; }
+    }
+  }catch(err){
+    console.error('viewProducer failed:',err);
+    bioEl.textContent=bioEl.textContent==='Loading…'?'No bio yet.':bioEl.textContent;
+  }
+}
+
+function renderProducerBeats(list){
+  const wrap=document.getElementById('pv-beats-list');
+  wrap.innerHTML='';
+  if(!list||list.length===0){
+    wrap.innerHTML='<div class="empty-state"><div class="empty-state-icon">♪</div><div class="empty-state-title">No beats yet</div></div>';
+    return;
+  }
+  list.forEach((b,i)=>{
+    const r=document.createElement('div');
+    r.className='bl-row';r.style.animationDelay=(i*.04)+'s';
+    const exclTag=b.exclPrice?'<span class="bl-excl-tag">Excl</span>':'';
+    r.innerHTML='<div class="bl-num">'+String(i+1).padStart(2,'0')+'</div><div class="bl-art"><div class="bc-wave">'+makeWaveBars(12)+'</div></div><div class="bl-info"><div class="bl-title">'+escapeHtml(b.title)+exclTag+'</div><div class="bl-prod">'+escapeHtml(b.genre)+'</div></div><div class="bl-price">$'+b.price+'</div><button class="bl-buy" onclick="doBuy(\''+(b.id||i)+'\',event)">BUY</button>';
+    r.addEventListener('click',e=>{ if(e.target.classList.contains('bl-buy')) return; playBeat(b.id||i); });
+    wrap.appendChild(r);
+  });
+}
+
+async function toggleFollowProducer(){
+  if(!window._currentUser){ gated();return; }
+  const uid=_viewedProducerUid;
+  if(!uid||uid===window._currentUser.uid) return;
+  const btn=document.getElementById('pv-follow-btn');
+  const isFollowing=btn.dataset.following==='1';
+  btn.disabled=true;
+  try{
+    const {doc,setDoc,deleteDoc,collection,getDocs,query,where}=await import('https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js');
+    const ref=doc(window._db,'follows',followDocId(uid));
+    if(isFollowing){
+      await deleteDoc(ref);
+      btn.textContent='FOLLOW';btn.classList.remove('following-on');btn.dataset.following='0';
+    }else{
+      await setDoc(ref,{followerId:window._currentUser.uid,followingId:uid,createdAt:window._ts()});
+      btn.textContent='FOLLOWING';btn.classList.add('following-on');btn.dataset.following='1';
+    }
+    getDocs(query(collection(window._db,'follows'),where('followingId','==',uid))).then(snap=>{
+      document.getElementById('pv-followers').textContent=snap.size;
+    }).catch(()=>{});
+  }catch(e){
+    console.error('Follow toggle failed:',e);
+    toast('Failed: '+(e.message||'try again'));
+  }
+  btn.disabled=false;
+}
+
 // ── PROFILE ──
 function loadProfile(){
   const user=window._currentUser;if(!user)return;
@@ -2541,15 +2670,65 @@ function exitProfileEdit(){
   document.getElementById('prof-edit-mode').style.display='none';
   document.getElementById('prof-view-mode').style.display='block';
 }
-function handleAvatar(input){
-  if(!input.files[0])return;
+let _avatarUploading=false;
+async function handleAvatar(input){
+  const file=input.files[0];
+  if(!file)return;
+  if(!window._currentUser){toast('Sign in first');return;}
+  if(!file.type.startsWith('image/')){toast('Choose an image file');return;}
+  if(file.size>8*1024*1024){toast('Image must be under 8MB');return;}
+  const av=document.getElementById('prof-av');
+  // Instant local preview while the real upload runs in the background.
   const reader=new FileReader();
-  reader.onload=e=>{
-    const av=document.getElementById('prof-av');
-    av.innerHTML=`<img src="${e.target.result}"/>`;
-    toast('Avatar updated');
-  };
-  reader.readAsDataURL(input.files[0]);
+  reader.onload=e=>{ av.innerHTML='<img src="'+e.target.result+'"/>'; };
+  reader.readAsDataURL(file);
+  if(_avatarUploading){toast('Still uploading the last photo — one sec');return;}
+  _avatarUploading=true;
+  try{
+    // Same signed-upload flow as beat audio (/api/upload.js) — the file
+    // goes straight from the browser to Cloudinary, never through our
+    // small Vercel function body.
+    const signRes=await fetch('/api/upload',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({fileName:file.name})
+    });
+    const sign=await signRes.json();
+    if(sign.error){throw new Error(sign.error);}
+    const fd=new FormData();
+    fd.append('file',file);
+    fd.append('api_key',sign.apiKey);
+    fd.append('timestamp',sign.timestamp);
+    fd.append('signature',sign.signature);
+    fd.append('public_id',sign.publicId);
+    fd.append('upload_preset',sign.uploadPreset);
+    const res=await fetch('https://api.cloudinary.com/v1_1/'+sign.cloudName+'/auto/upload',{method:'POST',body:fd});
+    const cd=await res.json();
+    if(cd.error){throw new Error(cd.error.message||'Image upload failed');}
+    if(!cd.secure_url){throw new Error('Image upload failed');}
+
+    // Persist in BOTH places: Firebase Auth's own photoURL (so this
+    // session and future logins pick it up via window._currentUser.photoURL,
+    // same as Google sign-in already does) and the Firestore users/{uid}
+    // doc (so OTHER people's viewProducer() calls, which can't read
+    // Firebase Auth for a different user, can still see it).
+    const {updateProfile}=await import('https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js');
+    await updateProfile(window._currentUser,{photoURL:cd.secure_url});
+    await window._setDoc(window._doc(window._db,'users',window._currentUser.uid),{photoURL:cd.secure_url,updatedAt:window._ts()},{merge:true});
+
+    const imgHtml='<img src="'+escapeHtml(cd.secure_url)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>';
+    av.innerHTML=imgHtml;
+    const tbAv=document.getElementById('tb-av');
+    if(tbAv) tbAv.innerHTML=imgHtml;
+    toast('Profile photo updated ✓');
+  }catch(e){
+    console.error('Avatar upload failed:',e);
+    toast('Photo upload failed: '+(e.message||'try again'));
+    // Revert the local preview since the real upload didn't actually stick
+    if(window._currentUser.photoURL){ av.innerHTML='<img src="'+escapeHtml(window._currentUser.photoURL)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>'; }
+    else { av.textContent=(window._currentUser.email||'?')[0].toUpperCase(); }
+  }
+  _avatarUploading=false;
 }
 async function saveProfile(){
   if(!window._currentUser){toast('Sign in first');return;}
