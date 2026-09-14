@@ -35,6 +35,56 @@ async function getUsdToNgnRate() {
   return rate;
 }
 
+// Sends the buyer their download link by email via Resend, right after a
+// verified purchase. This is deliberately isolated in its own try/catch in
+// the caller — an email failing to send should NEVER fail the whole payment
+// verification response, since the buyer already gets the download link
+// on-screen in the app regardless of whether the email goes out.
+//
+// SETUP NEEDED before this actually delivers to real buyers:
+// 1. Add RESEND_API_KEY to your Vercel env vars (from resend.com/api-keys).
+// 2. The `from` address below uses Resend's sandbox sender, which only
+//    reliably delivers to the email you signed up to Resend with — it will
+//    silently fail (or bounce) for real customers. Verify your own domain
+//    in Resend (Settings > Domains), then change `from` to something like
+//    'KLAVE <beats@klaveapp.com>' once that's done.
+async function sendDownloadEmail({ toEmail, beat, tier, reference }) {
+  if (!toEmail) {
+    console.warn('No buyer email available — skipping download email for', reference);
+    return;
+  }
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY not set — skipping download email for', reference);
+    return;
+  }
+
+  const licenseLabel = tier === 'exclusive' ? 'Exclusive Rights' : 'Standard';
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'KLAVE <onboarding@resend.dev>', // swap for a verified KLAVE domain address once set up in Resend
+      to: toEmail,
+      subject: `Your beat is ready — ${beat.title}`,
+      html: `
+        <div style="font-family:sans-serif;background:#0a0a0a;color:#ffffff;padding:32px;border-radius:12px;">
+          <div style="font-size:20px;font-weight:800;letter-spacing:2px;margin-bottom:2px;">KLAVE</div>
+          <div style="font-size:11px;color:#888;letter-spacing:1px;margin-bottom:24px;">// your beat is ready.</div>
+          <h2 style="margin:0 0 4px;">${beat.title}</h2>
+          <p style="color:#aaa;margin:0 0 4px;">prod. ${beat.prod || 'Unknown'}</p>
+          <p style="color:#aaa;margin:0 0 20px;">License: ${licenseLabel}</p>
+          <a href="${beat.audioUrl}" style="display:inline-block;background:#3B5BFF;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:700;">Download Your Beat</a>
+          <p style="color:#555;font-size:11px;margin-top:28px;">Order reference: ${reference}</p>
+        </div>
+      `,
+    }),
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -158,7 +208,22 @@ export default async function handler(req, res) {
       });
     });
 
-    // 4. TODO: Generate the license doc + signed/expiring download link for
+    // 4. Email the buyer their download link automatically. Falls back to the
+    //    buyer's account email on file if Paystack's metadata didn't carry one.
+    //    Wrapped so a failed/misconfigured email never breaks the payment
+    //    response itself — the buyer still sees the download link in-app.
+    try {
+      let buyerEmail = email;
+      if (!buyerEmail) {
+        const buyerSnap = await db.collection('users').doc(buyerId).get();
+        buyerEmail = buyerSnap.exists ? buyerSnap.data().email : null;
+      }
+      await sendDownloadEmail({ toEmail: buyerEmail, beat, tier, reference });
+    } catch (emailErr) {
+      console.error('Download email failed to send:', emailErr);
+    }
+
+    // 5. TODO: Generate the license doc + signed/expiring download link for
     //    beat.audioUrl, and return them below so the frontend can show a
     //    "download your beat + license" screen.
 
