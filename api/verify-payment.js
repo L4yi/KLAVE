@@ -8,7 +8,7 @@
 // against it — never trusting a rate the client might have used to build the charge.
 
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 if (!getApps().length) {
   initializeApp({
@@ -33,6 +33,71 @@ async function getUsdToNgnRate() {
   const rate = data?.rates?.NGN;
   if (!rate) throw new Error('Could not fetch USD->NGN exchange rate');
   return rate;
+}
+
+// Ambassador referral commission — % a referrer earns, based on how many
+// people they've referred. Must match the tiers shown in the KLAVE app's
+// admin referral panel (index-15.html: commissionTier()).
+function commissionTier(referralCount) {
+  if (referralCount >= 10) return 15;
+  if (referralCount >= 5) return 10;
+  return 5;
+}
+
+// Credits an ambassador's commission after a sale, if the buyer was referred.
+// The referral code can match EITHER a real KLAVE user's username OR a
+// waitlist ambassador's code (someone who joined via the separate ambassador
+// page without a KLAVE account) — checks users first, then falls back to
+// waitlist. Isolated in its own try/catch in the caller — same pattern as
+// the download email below — since a referral-crediting bug should never
+// break the payment response the buyer is waiting on.
+async function creditReferralCommission({ buyerId, saleAmountUsd, beatId, reference }) {
+  const buyerSnap = await db.collection('users').doc(buyerId).get();
+  const referredBy = buyerSnap.exists ? buyerSnap.data().referredBy : null;
+  if (!referredBy) return; // this buyer wasn't referred — nothing to do
+
+  let referrerDoc = null;
+  let referrerCollection = null;
+
+  const userQuery = await db.collection('users').where('username', '==', referredBy).limit(1).get();
+  if (!userQuery.empty) {
+    referrerDoc = userQuery.docs[0];
+    referrerCollection = 'users';
+  } else {
+    const waitlistQuery = await db.collection('waitlist').where('code', '==', referredBy).limit(1).get();
+    if (!waitlistQuery.empty) {
+      referrerDoc = waitlistQuery.docs[0];
+      referrerCollection = 'waitlist';
+    }
+  }
+  if (!referrerDoc) return; // referral code didn't match a real user or waitlist entry
+
+  const referrerData = referrerDoc.data();
+
+  // Guard against a beat's producer referring themselves as the buyer.
+  if (referrerCollection === 'users' && referrerDoc.id === buyerId) return;
+
+  const percent = commissionTier(referrerData.referralCount || 0);
+  const commissionAmount = saleAmountUsd * (percent / 100);
+
+  await referrerDoc.ref.update({
+    referralEarnings: FieldValue.increment(commissionAmount),
+    pendingReferralPayout: FieldValue.increment(commissionAmount),
+  });
+
+  await db.collection('referralPayouts').add({
+    referrerUsername: referredBy,
+    referrerType: referrerCollection, // 'users' or 'waitlist'
+    referrerUid: referrerDoc.id,
+    buyerUid: buyerId,
+    beatId,
+    saleAmount: saleAmountUsd,
+    commissionPercent: percent,
+    commissionAmount,
+    reference,
+    createdAt: new Date().toISOString(),
+    paid: false,
+  });
 }
 
 // Sends the buyer their download link by email via Resend, right after a
@@ -208,7 +273,20 @@ export default async function handler(req, res) {
       });
     });
 
-    // 4. Email the buyer their download link automatically. Falls back to the
+    // 4. Credit an ambassador commission if this buyer was referred. Isolated
+    //    so a referral-crediting failure never breaks the payment response.
+    try {
+      await creditReferralCommission({
+        buyerId,
+        saleAmountUsd: expectedPriceUsd,
+        beatId,
+        reference,
+      });
+    } catch (referralErr) {
+      console.error('Referral commission crediting failed:', referralErr);
+    }
+
+    // 5. Email the buyer their download link automatically. Falls back to the
     //    buyer's account email on file if Paystack's metadata didn't carry one.
     //    Wrapped so a failed/misconfigured email never breaks the payment
     //    response itself — the buyer still sees the download link in-app.
@@ -223,7 +301,7 @@ export default async function handler(req, res) {
       console.error('Download email failed to send:', emailErr);
     }
 
-    // 5. TODO: Generate the license doc + signed/expiring download link for
+    // 6. TODO: Generate the license doc + signed/expiring download link for
     //    beat.audioUrl, and return them below so the frontend can show a
     //    "download your beat + license" screen.
 

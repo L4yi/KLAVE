@@ -69,14 +69,14 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Admin only' });
   }
 
-  const { referrerUid } = req.body || {};
-  if (!referrerUid) {
-    return res.status(400).json({ error: 'referrerUid is required' });
+  const { referrerId, referrerType } = req.body || {};
+  if (!referrerId || !['users', 'waitlist'].includes(referrerType)) {
+    return res.status(400).json({ error: 'referrerId and a valid referrerType (users|waitlist) are required' });
   }
 
   try {
     // ── 2. Re-read the real pending balance and bank details ──
-    const referrerRef = db.collection('users').doc(referrerUid);
+    const referrerRef = db.collection(referrerType).doc(referrerId);
     const referrerSnap = await referrerRef.get();
     if (!referrerSnap.exists) {
       return res.status(404).json({ error: 'Referrer not found' });
@@ -84,6 +84,7 @@ export default async function handler(req, res) {
     const referrer = referrerSnap.data();
     const pendingUsd = referrer.pendingReferralPayout || 0;
     const bank = referrer.bankDetails;
+    const referrerName = referrerType === 'users' ? referrer.username : referrer.name;
 
     if (pendingUsd <= 0) {
       return res.status(400).json({ error: 'Nothing pending for this ambassador' });
@@ -103,7 +104,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           type: 'nuban',
-          name: bank.accountName || referrer.username,
+          name: bank.accountName || referrerName,
           account_number: bank.accountNumber,
           bank_code: bank.bankCode,
           currency: 'NGN',
@@ -149,8 +150,9 @@ export default async function handler(req, res) {
     });
 
     await db.collection('referralPayoutRuns').add({
-      referrerUid,
-      referrerUsername: referrer.username,
+      referrerId,
+      referrerType,
+      referrerName,
       amountUsd: pendingUsd,
       amountNgn,
       exchangeRate: rate,
