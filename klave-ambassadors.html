@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLAVE Ambassadors</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap');
+
+  :root{
+    --bg: #12100D;
+    --paper: #F4EEE2;
+    --amber: #D98F3E;
+    --taupe: #7A6F5E;
+    --rust: #8B3A2B;
+    --line: rgba(244,238,226,0.14);
+  }
+
+  *{ box-sizing: border-box; margin:0; padding:0; }
+
+  html{ scroll-behavior: smooth; }
+
+  body{
+    background: var(--bg);
+    color: var(--paper);
+    font-family: 'Work Sans', sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a{ color: inherit; }
+
+  .wrap{
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  header.top{
+    padding: 28px 0 0;
+  }
+  .wordmark{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.15rem;
+    letter-spacing: 0.01em;
+  }
+
+  /* ---- Hero: waveform ---- */
+  .hero{
+    padding: 56px 0 40px;
+  }
+  .wave{
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 84px;
+    margin-bottom: 34px;
+  }
+  .wave span{
+    flex: 1;
+    background: var(--amber);
+    border-radius: 2px 2px 0 0;
+    opacity: 0.85;
+  }
+  .wave span:nth-child(3n){ background: var(--rust); opacity: 0.9; }
+
+  h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(2.1rem, 7vw, 3.1rem);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    max-width: 11ch;
+  }
+
+  .lede{
+    margin-top: 22px;
+    max-width: 46ch;
+    font-size: 1.05rem;
+    color: #DCD4C4;
+  }
+
+  .lede b{ color: var(--paper); font-weight: 600; }
+
+  /* ---- CTA ---- */
+  .cta-row{
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .btn{
+    display: inline-block;
+    background: var(--amber);
+    color: #1A1610;
+    font-weight: 600;
+    font-size: 0.98rem;
+    padding: 14px 26px;
+    border-radius: 4px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .cta-note{
+    font-size: 0.85rem;
+    color: var(--taupe);
+  }
+
+  .ref-box{
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    max-width: 420px;
+    flex-wrap: wrap;
+  }
+  .ref-input{
+    flex: 1;
+    min-width: 180px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--paper);
+    font-family: 'Work Sans', sans-serif;
+    font-size: 0.95rem;
+    padding: 13px 14px;
+    border-radius: 4px;
+  }
+  .ref-input::placeholder{ color: var(--taupe); }
+  .ref-input:focus{ outline: none; border-color: var(--amber); }
+  .ref-generate{ flex-shrink: 0; }
+
+  .ref-result{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: rgba(217,143,62,0.08);
+    border: 1px solid rgba(217,143,62,0.3);
+    border-radius: 4px;
+    padding: 12px 14px;
+    max-width: 480px;
+  }
+  .ref-url{
+    font-size: 0.9rem;
+    color: var(--paper);
+    word-break: break-all;
+    flex: 1;
+    min-width: 160px;
+  }
+  .ref-copy{
+    background: transparent;
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 8px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .ref-copy:active{ transform: translateY(1px); }
+  .ref-copy.copied{ background: var(--amber); color: #1A1610; }
+
+  /* ---- Section rule ---- */
+  .rule{
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: 52px 0;
+  }
+
+  h2{
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 1.55rem;
+    margin-bottom: 8px;
+  }
+  .section-note{
+    color: var(--taupe);
+    font-size: 0.95rem;
+    max-width: 42ch;
+    margin-bottom: 30px;
+  }
+
+  /* ---- How it works ---- */
+  .steps{
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .step{
+    display: flex;
+    gap: 16px;
+    align-items: baseline;
+  }
+  .step .n{
+    font-family: 'Fraunces', serif;
+    font-size: 1.3rem;
+    color: var(--amber);
+    width: 1.4em;
+    flex-shrink: 0;
+  }
+  .step p{ color: #DCD4C4; font-size: 0.98rem; }
+  .step strong{ color: var(--paper); }
+
+  /* ---- Reward ladder (progressive waveform) ---- */
+  .ladder{
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .rung{
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .rung:first-child{ border-top: 1px solid var(--line); }
+  .rung-bar-track{
+    height: 6px;
+    background: rgba(244,238,226,0.08);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .rung-bar{
+    height: 100%;
+    background: var(--amber);
+    border-radius: 3px;
+  }
+  .rung-count{
+    font-family: 'Fraunces', serif;
+    font-size: 1.6rem;
+    color: var(--paper);
+    line-height: 1;
+  }
+  .rung-count span{
+    display: block;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 0.72rem;
+    color: var(--taupe);
+    margin-top: 2px;
+    font-weight: 500;
+  }
+  .rung-reward{
+    font-size: 0.97rem;
+    color: #DCD4C4;
+  }
+  .rung-reward strong{ color: var(--paper); }
+  .rung.founding .rung-count{ color: var(--rust); }
+
+  /* ---- Who it's for ---- */
+  .who{
+    color: #DCD4C4;
+    font-size: 1.02rem;
+    max-width: 48ch;
+  }
+  .who b{ color: var(--paper); }
+
+  /* ---- Footer CTA ---- */
+  footer{
+    padding: 60px 0 48px;
+    text-align: left;
+  }
+  footer .lede{ margin-bottom: 26px; }
+
+  footer .fine{
+    margin-top: 40px;
+    font-size: 0.82rem;
+    color: var(--taupe);
+  }
+
+  @media (max-width: 420px){
+    .wrap{ padding: 0 20px; }
+    .rung{ grid-template-columns: 44px 1fr; gap: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="wordmark">KLAVE</div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="wave" id="wave"></div>
+    <h1>You don't need to make beats to help build this.</h1>
+    <p class="lede">
+      KLAVE is a marketplace for <b>100% human-made beats</b> — verified, no AI-generated stems, real producers paid fairly. We're opening it up before launch, and we need people who believe in that to help spread it.
+    </p>
+    <div class="cta-row">
+      <div class="ref-box" id="refBoxHero">
+        <input type="text" class="ref-input" placeholder="Your name or KLAVE username" maxlength="24">
+        <button class="btn ref-generate">Get my link</button>
+      </div>
+      <div class="ref-result" style="display:none;">
+        <span class="ref-url"></span>
+        <button class="ref-copy">Copy</button>
+      </div>
+      <span class="cta-note">Takes 10 seconds. No producer account required.</span>
+    </div>
+  </div>
+</section>
+
+<div class="wrap"><hr class="rule"></div>
+
+<section>
+  <div class="wrap">
+    <h2>How it works</h2>
+    <p class="section-note">One link. Share it however you already talk to people — DMs, group chats, your page.</p>
+    <div class="steps">
+      <div class="step">
+        <span class="n">1</span>
+        <p><strong>Grab your link</strong> — every ambassador gets one unique referral code, tracked to you.</p>
+      </div>
+      <div class="step">
+        <span class="n">2</span>
+        <p><strong>Share it with anyone</strong> — producers, artists, fans, friends. It works the same for all of them.</p>
+      </div>
+      <div class="step">
+        <span class="n">3</span>
+        <p><strong>They join, you both get rewarded</strong> — the more people you bring in, the more you unlock.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap"><hr class="rule"></div>
+
+<section>
+  <div class="wrap">
+    <h2>What you get</h2>
+    <p class="section-note">Rewards scale with referrals — the same ladder whether you make beats or just love them.</p>
+    <div class="ladder">
+      <div class="rung">
+        <div class="rung-count">5<span>%</span></div>
+        <div class="rung-reward"><strong>Any referral —</strong> you earn 5% of every sale made by someone you brought in. For life.</div>
+      </div>
+      <div class="rung">
+        <div class="rung-count">10<span>%</span></div>
+        <div class="rung-reward"><strong>5 referrals —</strong> your cut jumps to 10%, plus early access to NERO before it opens to everyone else.</div>
+      </div>
+      <div class="rung founding">
+        <div class="rung-count">15<span>%</span></div>
+        <div class="rung-reward"><strong>10 referrals —</strong> your cut jumps to 15%, plus a permanent Founding Ambassador badge on your profile.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap"><hr class="rule"></div>
+
+<section>
+  <div class="wrap">
+    <h2>Who this is for</h2>
+    <p class="who">
+      <b>Anyone.</b> Producers tired of marketplaces flooded with AI-generated stems. Artists who want real collaborators. Fans who just want more human-made music in the world. If that's you, you're already an ambassador — you just don't have the link yet.
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <hr class="rule" style="margin-top:0;">
+    <h2>Ready?</h2>
+    <p class="lede">Get your link, share it your way, and help build the marketplace that pays real producers for real work.</p>
+    <div class="ref-box" id="refBoxFooter">
+      <input type="text" class="ref-input" placeholder="Your name or KLAVE username" maxlength="24">
+      <button class="btn ref-generate">Get my link</button>
+    </div>
+    <div class="ref-result" style="display:none;">
+      <span class="ref-url"></span>
+      <button class="ref-copy">Copy</button>
+    </div>
+    <p class="fine">KLAVE — human-made beats, verified.</p>
+  </div>
+</footer>
+
+<script>
+  // Generate a natural, uneven waveform for the hero
+  const wave = document.getElementById('wave');
+  const heights = [22,38,54,30,70,45,84,60,35,50,28,66,42,58,25,48,72,33,55,20];
+  heights.forEach(h => {
+    const bar = document.createElement('span');
+    bar.style.height = h + '%';
+    wave.appendChild(bar);
+  });
+
+  // Referral link generation — client-side only for now (manual tracking).
+  // Points to the KLAVE app with a ?ref= code built from whatever name/username
+  // the ambassador enters. No backend lookup yet: swap KLAVE_URL or the
+  // slugify logic here once real referral tracking exists.
+  const KLAVE_URL = 'https://klaveapp.vercel.app';
+
+  function slugify(str){
+    return str
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 24) || 'friend';
+  }
+
+  document.querySelectorAll('.ref-generate').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const box = btn.closest('.ref-box');
+      const input = box.querySelector('.ref-input');
+      const code = slugify(input.value);
+      const url = `${KLAVE_URL}/?ref=${code}`;
+
+      const resultEl = box.nextElementSibling;
+      resultEl.style.display = 'flex';
+      resultEl.querySelector('.ref-url').textContent = url;
+
+      const copyBtn = resultEl.querySelector('.ref-copy');
+      copyBtn.classList.remove('copied');
+      copyBtn.textContent = 'Copy';
+    });
+  });
+
+  document.querySelectorAll('.ref-copy').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const url = btn.parentElement.querySelector('.ref-url').textContent;
+      navigator.clipboard.writeText(url).then(() => {
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
