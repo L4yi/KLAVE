@@ -62,7 +62,7 @@ export default async function handler(req, res) {
     }
 
     // -- EXISTING CLOUDINARY SIGNING LOGIC --
-    const { fileName } = req.body || {};
+    const { fileName, kind } = req.body || {};
 
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
@@ -78,7 +78,8 @@ export default async function handler(req, res) {
       .replace(/[^a-zA-Z0-9_-]/g, '_') // replace special chars/slashes with underscore
       .slice(0, 60);                   // limit length
 
-    const publicId = `beats/${Date.now()}_${safeName}`;
+    const folder = kind === 'cover' ? 'covers' : 'beats';
+    const publicId = `${folder}/${Date.now()}_${safeName}`;
 
     // Sign the upload. Only public_id, timestamp, and upload_preset are
     // part of the signature — api_key and the file itself are never
