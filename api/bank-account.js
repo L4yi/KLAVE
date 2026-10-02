@@ -3,7 +3,6 @@
 //   { action: 'list' }
 //   { action: 'resolve', accountNumber, bankCode }
 //   { action: 'save', accountNumber, bankCode, bankName }   (needs auth header)
-//   { action: 'migrate' }                                   (admin only, one-time)
 //
 // Changes in this version:
 //  - 'save' now writes bank details to users/{uid}/private/finance, which only
@@ -11,8 +10,6 @@
 //    every signed-in user can read.
 //  - 'save' re-verifies the account with Paystack itself and stores the name
 //    Paystack returns, instead of trusting an accountName sent by the browser.
-//  - 'migrate' moves existing bankDetails off the public user docs. Run it
-//    once after deploying, then you can delete that action.
 
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -29,8 +26,6 @@ if (!getApps().length) {
 }
 
 const db = getFirestore();
-const ADMIN_UID = 'SlUg15UFENNJglFw9KfRqQNWdkx2';
-
 async function resolveWithPaystack(accountNumber, bankCode) {
   const psRes = await fetch(
     `https://api.paystack.co/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`,
@@ -134,34 +129,6 @@ async function handleSave(req, res) {
   }
 }
 
-// -- action: migrate (admin only, one-time) --
-// Moves bankDetails (and any saved recipientCode) from users/{uid} to
-// users/{uid}/private/finance, then deletes it from the public doc.
-// Handles 200 users per call; call again while `more` is true.
-async function handleMigrate(req, res) {
-  const caller = await getCaller(req);
-  if (!caller || !(caller.uid === ADMIN_UID || caller.admin === true)) {
-    return res.status(403).json({ error: 'Admin only' });
-  }
-  try {
-    const snap = await db.collection('users').where('bankDetails', '!=', null).limit(200).get();
-    const batch = db.batch();
-    snap.docs.forEach((doc) => {
-      batch.set(
-        db.doc(`users/${doc.id}/private/finance`),
-        { bankDetails: doc.data().bankDetails, migratedAt: FieldValue.serverTimestamp() },
-        { mergeFields: ['bankDetails', 'migratedAt'] }
-      );
-      batch.update(doc.ref, { bankDetails: FieldValue.delete() });
-    });
-    await batch.commit();
-    return res.status(200).json({ migrated: snap.size, more: snap.size === 200 });
-  } catch (err) {
-    console.error('bank-account (migrate) failed:', err);
-    return res.status(500).json({ error: err.message || 'Migration failed' });
-  }
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -170,6 +137,5 @@ export default async function handler(req, res) {
   if (action === 'list') return handleList(req, res);
   if (action === 'resolve') return handleResolve(req, res);
   if (action === 'save') return handleSave(req, res);
-  if (action === 'migrate') return handleMigrate(req, res);
   return res.status(400).json({ error: 'Unknown or missing action' });
 }
