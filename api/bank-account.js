@@ -1,16 +1,21 @@
 // /api/bank-account.js
-// Vercel serverless function — merged from list-banks.js, resolve-account.js,
-// and save-bank-details.js into one endpoint to stay under Vercel's Hobby
-// plan limit of 12 serverless functions per deployment. Behavior of each
-// action is unchanged from the original files; only the routing is new.
-//
-// Call with POST and an `action` field of 'list', 'resolve', or 'save':
+// One endpoint (to stay under Vercel Hobby's 12-function limit):
 //   { action: 'list' }
 //   { action: 'resolve', accountNumber, bankCode }
-//   { action: 'save', accountNumber, bankCode, bankName, accountName }  (needs auth header)
+//   { action: 'save', accountNumber, bankCode, bankName }   (needs auth header)
+//   { action: 'migrate' }                                   (admin only, one-time)
+//
+// Changes in this version:
+//  - 'save' now writes bank details to users/{uid}/private/finance, which only
+//    the owner and admin can read. Before, they sat on the users doc, which
+//    every signed-in user can read.
+//  - 'save' re-verifies the account with Paystack itself and stores the name
+//    Paystack returns, instead of trusting an accountName sent by the browser.
+//  - 'migrate' moves existing bankDetails off the public user docs. Run it
+//    once after deploying, then you can delete that action.
 
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
 if (!getApps().length) {
@@ -24,23 +29,36 @@ if (!getApps().length) {
 }
 
 const db = getFirestore();
+const ADMIN_UID = 'SlUg15UFENNJglFw9KfRqQNWdkx2';
+
+async function resolveWithPaystack(accountNumber, bankCode) {
+  const psRes = await fetch(
+    `https://api.paystack.co/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`,
+    { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` } }
+  );
+  return psRes.json();
+}
+
+async function getCaller(req) {
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!idToken) return null;
+  try {
+    return await getAuth().verifyIdToken(idToken);
+  } catch (e) {
+    return null;
+  }
+}
 
 // -- action: list --
-// Proxies Paystack's bank list so the frontend never needs the secret key.
-// Used to populate the bank dropdown in the ambassador bank-details form.
 async function handleList(req, res) {
   try {
     const psRes = await fetch('https://api.paystack.co/bank?country=nigeria&currency=NGN', {
       headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
     });
     const psData = await psRes.json();
-
-    if (!psData.status) {
-      throw new Error(psData.message || 'Paystack bank list request failed');
-    }
-
-    // Only send what the dropdown needs — name + code.
-    const banks = psData.data.map(b => ({ name: b.name, code: b.code }));
+    if (!psData.status) throw new Error(psData.message || 'Paystack bank list request failed');
+    const banks = psData.data.map((b) => ({ name: b.name, code: b.code }));
     return res.status(200).json({ banks });
   } catch (err) {
     console.error('bank-account (list) failed:', err);
@@ -49,28 +67,16 @@ async function handleList(req, res) {
 }
 
 // -- action: resolve --
-// Verifies a bank account number + bank code actually belongs to a real
-// account, and returns the account holder's name so the ambassador can
-// confirm it's theirs before it's saved. Never trust an account number
-// without this check — a typo'd digit sends someone else's commission to
-// a stranger.
 async function handleResolve(req, res) {
   const { accountNumber, bankCode } = req.body || {};
   if (!accountNumber || !bankCode) {
     return res.status(400).json({ error: 'accountNumber and bankCode are required' });
   }
-
   try {
-    const psRes = await fetch(
-      `https://api.paystack.co/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`,
-      { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` } }
-    );
-    const psData = await psRes.json();
-
+    const psData = await resolveWithPaystack(accountNumber, bankCode);
     if (!psData.status) {
       return res.status(400).json({ error: psData.message || 'Could not verify that account' });
     }
-
     return res.status(200).json({
       accountName: psData.data.account_name,
       accountNumber: psData.data.account_number,
@@ -82,38 +88,77 @@ async function handleResolve(req, res) {
 }
 
 // -- action: save --
-// Saves a KLAVE user's bank details for referral payouts. This is
-// server-side (Admin SDK, bypasses rules) because 'bankDetails' isn't on
-// validUser()'s allow-listed fields — same pattern as everything else
-// money-related in this app.
 async function handleSave(req, res) {
-  const authHeader = req.headers.authorization || '';
-  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!idToken) {
-    return res.status(401).json({ error: 'Missing auth token' });
-  }
+  const caller = await getCaller(req);
+  if (!caller) return res.status(401).json({ error: 'Missing or invalid auth token' });
+  const uid = caller.uid;
 
-  let uid;
-  try {
-    const decoded = await getAuth().verifyIdToken(idToken);
-    uid = decoded.uid;
-  } catch (e) {
-    return res.status(401).json({ error: 'Invalid auth token' });
-  }
-
-  const { accountNumber, bankCode, bankName, accountName } = req.body || {};
-  if (!accountNumber || !bankCode || !accountName) {
-    return res.status(400).json({ error: 'Missing required fields' });
+  const { accountNumber, bankCode, bankName } = req.body || {};
+  if (typeof accountNumber !== 'string' || !/^\d{10}$/.test(accountNumber) || !bankCode) {
+    return res.status(400).json({ error: 'A valid 10-digit account number and bank are required' });
   }
 
   try {
-    await db.collection('users').doc(uid).update({
-      bankDetails: { accountNumber, bankCode, bankName, accountName },
-    });
-    return res.status(200).json({ success: true });
+    // Never trust a name sent by the browser: use what Paystack says it is.
+    const psData = await resolveWithPaystack(accountNumber, String(bankCode));
+    if (!psData.status) {
+      return res.status(400).json({ error: psData.message || 'Could not verify that account' });
+    }
+
+    // mergeFields replaces the whole bankDetails value, so an old
+    // recipientCode from a previous account can't survive a change.
+    await db.doc(`users/${uid}/private/finance`).set(
+      {
+        bankDetails: {
+          accountNumber,
+          bankCode: String(bankCode),
+          bankName: String(bankName || '').slice(0, 80),
+          accountName: psData.data.account_name,
+        },
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { mergeFields: ['bankDetails', 'updatedAt'] }
+    );
+
+    // Remove any legacy copy from the publicly readable user doc.
+    try {
+      await db.collection('users').doc(uid).update({ bankDetails: FieldValue.delete() });
+    } catch (e) {
+      /* no legacy field / doc: fine */
+    }
+
+    return res.status(200).json({ success: true, accountName: psData.data.account_name });
   } catch (err) {
     console.error('bank-account (save) failed:', err);
     return res.status(500).json({ error: 'Could not save bank details' });
+  }
+}
+
+// -- action: migrate (admin only, one-time) --
+// Moves bankDetails (and any saved recipientCode) from users/{uid} to
+// users/{uid}/private/finance, then deletes it from the public doc.
+// Handles 200 users per call; call again while `more` is true.
+async function handleMigrate(req, res) {
+  const caller = await getCaller(req);
+  if (!caller || !(caller.uid === ADMIN_UID || caller.admin === true)) {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+  try {
+    const snap = await db.collection('users').where('bankDetails', '!=', null).limit(200).get();
+    const batch = db.batch();
+    snap.docs.forEach((doc) => {
+      batch.set(
+        db.doc(`users/${doc.id}/private/finance`),
+        { bankDetails: doc.data().bankDetails, migratedAt: FieldValue.serverTimestamp() },
+        { mergeFields: ['bankDetails', 'migratedAt'] }
+      );
+      batch.update(doc.ref, { bankDetails: FieldValue.delete() });
+    });
+    await batch.commit();
+    return res.status(200).json({ migrated: snap.size, more: snap.size === 200 });
+  } catch (err) {
+    console.error('bank-account (migrate) failed:', err);
+    return res.status(500).json({ error: err.message || 'Migration failed' });
   }
 }
 
@@ -121,11 +166,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
   const { action } = req.body || {};
   if (action === 'list') return handleList(req, res);
   if (action === 'resolve') return handleResolve(req, res);
   if (action === 'save') return handleSave(req, res);
-
+  if (action === 'migrate') return handleMigrate(req, res);
   return res.status(400).json({ error: 'Unknown or missing action' });
 }

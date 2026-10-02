@@ -1,27 +1,22 @@
 // /api/payout-referrals.js
-// Vercel serverless function — pays out one ambassador's pending referral
-// commission via Paystack Transfers. This moves real money, so it:
-//   1. Requires a valid Firebase ID token from the admin account (same
-//      ADMIN_UID gate used everywhere else in the app).
-//   2. Re-reads the pending balance itself rather than trusting whatever
-//      the admin panel displayed on screen.
-//   3. Never assumes Paystack succeeded without checking the response.
+// Pays out one ambassador's pending referral commission via Paystack Transfers.
 //
-// REQUIRES, before this can work at all:
-//   - Transfers enabled on your Paystack account (business verification —
-//     done in the Paystack dashboard, not something this code can do)
-//   - A funded Paystack balance to pay out from
-//   - Env vars: PAYSTACK_SECRET_KEY, FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL,
-//     FIREBASE_PRIVATE_KEY (all already set up for verify-payment.js)
+// Changes in this version:
+//  - NO DOUBLE PAYOUTS: the pending balance is reserved inside a Firestore
+//    transaction BEFORE any money moves, and every transfer carries a unique
+//    Paystack reference. A double-tap or two concurrent requests can no longer
+//    both pay the same balance.
+//  - If Paystack explicitly rejects the transfer, the reserved balance is
+//    restored. If the network call itself fails (outcome unknown), the run is
+//    marked 'unknown' and the balance is NOT restored: check the Paystack
+//    dashboard for that reference before retrying.
+//  - Reads bank details from users/{uid}/private/finance (falls back to the
+//    legacy field on the user doc until bank-account.js 'migrate' has been run).
 //
-// NOTE ON OTP: some Paystack accounts require a one-time PIN to finalize a
-// transfer (a manual step in their dashboard/app), especially for newer or
-// unverified businesses. If your account is set up that way, the transfer
-// created here will sit in "otp" status until you approve it in Paystack —
-// this function can't complete that step for you. Ask Paystack support to
-// disable OTP for API-initiated transfers once you're ready to go fully
-// automatic.
+// Still requires: Transfers enabled on Paystack, a funded balance, and possibly
+// OTP approval per transfer (see Paystack dashboard settings).
 
+import { randomUUID } from 'crypto';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
@@ -37,7 +32,7 @@ if (!getApps().length) {
 }
 
 const db = getFirestore();
-const ADMIN_UID = 'SlUg15UFENNJglFw9KfRqQNWdkx2'; // must match index-15.html
+const ADMIN_UID = 'SlUg15UFENNJglFw9KfRqQNWdkx2';
 
 async function getUsdToNgnRate() {
   const res = await fetch('https://open.er-api.com/v6/latest/USD');
@@ -52,48 +47,49 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // ── 1. Confirm the caller is really the admin ──
+  // ── 1. Admin only ──
   const authHeader = req.headers.authorization || '';
   const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!idToken) {
-    return res.status(401).json({ error: 'Missing auth token' });
-  }
-  let callerUid;
+  if (!idToken) return res.status(401).json({ error: 'Missing auth token' });
+
+  let decoded;
   try {
-    const decoded = await getAuth().verifyIdToken(idToken);
-    callerUid = decoded.uid;
+    decoded = await getAuth().verifyIdToken(idToken);
   } catch (e) {
     return res.status(401).json({ error: 'Invalid auth token' });
   }
-  if (callerUid !== ADMIN_UID) {
+  if (decoded.uid !== ADMIN_UID && decoded.admin !== true) {
     return res.status(403).json({ error: 'Admin only' });
   }
 
-  const { referrerId, referrerType } = req.body || {};
-  if (!referrerId || !['users', 'waitlist'].includes(referrerType)) {
-    return res.status(400).json({ error: 'referrerId and a valid referrerType (users|waitlist) are required' });
+  const { referrerUid } = req.body || {};
+  if (!referrerUid || typeof referrerUid !== 'string') {
+    return res.status(400).json({ error: 'referrerUid is required' });
   }
 
   try {
-    // ── 2. Re-read the real pending balance and bank details ──
-    const referrerRef = db.collection(referrerType).doc(referrerId);
-    const referrerSnap = await referrerRef.get();
+    const referrerRef = db.collection('users').doc(referrerUid);
+    const privRef = db.doc(`users/${referrerUid}/private/finance`);
+    const [referrerSnap, privSnap] = await Promise.all([referrerRef.get(), privRef.get()]);
+
     if (!referrerSnap.exists) {
       return res.status(404).json({ error: 'Referrer not found' });
     }
     const referrer = referrerSnap.data();
-    const pendingUsd = referrer.pendingReferralPayout || 0;
-    const bank = referrer.bankDetails;
-    const referrerName = referrerType === 'users' ? referrer.username : referrer.name;
 
-    if (pendingUsd <= 0) {
+    // Prefer the private doc; fall back to the legacy field until migrated.
+    const privBank = privSnap.exists ? privSnap.data().bankDetails : null;
+    const bankFromPrivate = !!(privBank && privBank.accountNumber);
+    const bank = bankFromPrivate ? privBank : referrer.bankDetails;
+
+    if ((referrer.pendingReferralPayout || 0) <= 0) {
       return res.status(400).json({ error: 'Nothing pending for this ambassador' });
     }
     if (!bank || !bank.accountNumber || !bank.bankCode) {
       return res.status(400).json({ error: 'No bank details on file for this ambassador' });
     }
 
-    // ── 3. Create (or reuse) a Paystack transfer recipient ──
+    // ── 2. Transfer recipient (no money moves yet) ──
     let recipientCode = bank.recipientCode;
     if (!recipientCode) {
       const recipientRes = await fetch('https://api.paystack.co/transferrecipient', {
@@ -104,7 +100,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           type: 'nuban',
-          name: bank.accountName || referrerName,
+          name: bank.accountName || referrer.username,
           account_number: bank.accountNumber,
           bank_code: bank.bankCode,
           currency: 'NGN',
@@ -115,50 +111,93 @@ export default async function handler(req, res) {
         throw new Error(recipientData.message || 'Could not create transfer recipient');
       }
       recipientCode = recipientData.data.recipient_code;
-      await referrerRef.update({ 'bankDetails.recipientCode': recipientCode });
+      if (bankFromPrivate) {
+        await privRef.set({ bankDetails: { recipientCode } }, { merge: true });
+      } else {
+        await referrerRef.update({ 'bankDetails.recipientCode': recipientCode });
+      }
     }
 
-    // ── 4. Convert USD balance to NGN (Paystack pays out in NGN) ──
+    // Fetch the rate BEFORE reserving, so a rate failure can't strand a reservation.
     const rate = await getUsdToNgnRate();
-    const amountNgn = Math.round(pendingUsd * rate);
-    const amountKobo = amountNgn * 100;
 
-    // ── 5. Initiate the transfer ──
-    const transferRes = await fetch('https://api.paystack.co/transfer', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        source: 'balance',
-        amount: amountKobo,
-        recipient: recipientCode,
-        reason: 'KLAVE ambassador referral commission',
-      }),
+    // ── 3. Reserve the balance atomically ──
+    const payoutRef = db.collection('referralPayoutRuns').doc();
+    const reservedUsd = await db.runTransaction(async (t) => {
+      const snap = await t.get(referrerRef);
+      const pending = snap.data().pendingReferralPayout || 0;
+      if (pending <= 0) return 0;
+      t.update(referrerRef, { pendingReferralPayout: FieldValue.increment(-pending) });
+      t.set(payoutRef, {
+        referrerUid,
+        referrerUsername: referrer.username || null,
+        amountUsd: pending,
+        status: 'processing',
+        createdAt: new Date().toISOString(),
+      });
+      return pending;
     });
-    const transferData = await transferRes.json();
-    if (!transferData.status) {
-      throw new Error(transferData.message || 'Paystack transfer failed');
+
+    if (reservedUsd <= 0) {
+      return res.status(400).json({ error: 'Nothing pending for this ambassador' });
     }
 
-    // ── 6. Only now that Paystack accepted it, clear the pending balance ──
-    // Decrement by the exact amount we just paid (not "set to 0") so a new
-    // commission that lands mid-request isn't accidentally wiped out.
-    await referrerRef.update({
-      pendingReferralPayout: FieldValue.increment(-pendingUsd),
-    });
+    const amountNgn = Math.round(reservedUsd * rate);
+    const amountKobo = amountNgn * 100;
+    const transferReference = 'kp-' + randomUUID(); // lowercase, 39 chars: valid Paystack reference
 
-    await db.collection('referralPayoutRuns').add({
-      referrerId,
-      referrerType,
-      referrerName,
-      amountUsd: pendingUsd,
+    // ── 4. Send the transfer ──
+    let transferData;
+    try {
+      const transferRes = await fetch('https://api.paystack.co/transfer', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          source: 'balance',
+          amount: amountKobo,
+          recipient: recipientCode,
+          reference: transferReference,
+          reason: 'KLAVE ambassador referral commission',
+        }),
+      });
+      transferData = await transferRes.json();
+    } catch (netErr) {
+      // Outcome unknown: do NOT restore the balance automatically.
+      await payoutRef.update({
+        status: 'unknown',
+        paystackReference: transferReference,
+        amountNgn,
+        exchangeRate: rate,
+        error: String(netErr.message || netErr),
+      });
+      return res.status(502).json({
+        error: 'Could not confirm the transfer with Paystack. Check the Paystack dashboard for this reference before retrying.',
+        reference: transferReference,
+      });
+    }
+
+    if (!transferData.status) {
+      // Paystack explicitly refused: nothing was sent, put the balance back.
+      await referrerRef.update({ pendingReferralPayout: FieldValue.increment(reservedUsd) });
+      await payoutRef.update({
+        status: 'failed',
+        paystackReference: transferReference,
+        error: transferData.message || 'Paystack transfer failed',
+      });
+      return res.status(400).json({ error: transferData.message || 'Paystack transfer failed' });
+    }
+
+    // ── 5. Record success ──
+    await payoutRef.update({
+      status: 'sent',
       amountNgn,
       exchangeRate: rate,
+      paystackReference: transferReference,
       paystackTransferCode: transferData.data.transfer_code,
       paystackStatus: transferData.data.status, // 'success', 'pending', or 'otp'
-      createdAt: new Date().toISOString(),
     });
 
     return res.status(200).json({

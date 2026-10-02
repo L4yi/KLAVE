@@ -1,20 +1,17 @@
 // api/verify-plan-payment.js — verifies a Paystack transaction for a plan
 // upgrade (pro7 / pro25 / lifetime), then writes the new tier onto the
-// user's Firestore doc via the Admin SDK. The client can never set `tier`
-// itself — firestore.rules has no client-facing rule for it — so this is
-// the only legitimate path a user's tier ever changes after signup.
+// user's Firestore doc via the Admin SDK.
 //
-// For recurring plans (pro7/pro25), this also looks up the subscription
-// that Paystack auto-created on first charge and stores its code + email
-// token, so /api/cancel-plan.js can cancel it later.
-//
-// CAVEAT: this only handles the *first* charge. Recurring renewal charges,
-// failed-payment downgrades, and subscription-cancelled events all happen
-// on Paystack's side automatically, but this app does not yet listen for
-// those via a webhook — so if a renewal fails or a subscriber cancels
-// directly on Paystack's end, KLAVE's Firestore `tier` field won't know
-// until you add a webhook handler for charge.success / subscription.disable
-// events. Fine for launch, but flag this before scaling paid plans.
+// Changes in this version:
+//  - Checks WHAT was paid, not just that something was paid:
+//      pro7 / pro25  -> must be on the matching Paystack plan code
+//                       (env PAYSTACK_PLAN_PRO7 / PAYSTACK_PLAN_PRO25).
+//                       If those env vars aren't set yet, falls back to an
+//                       amount check against the live USD->NGN rate.
+//      lifetime      -> amount must cover $299.
+//  - Rejects currencies other than NGN/USD.
+//  - A reference can grant a tier only once (recorded in `planPayments`), so
+//    an old reference can't be replayed later to re-upgrade a downgraded account.
 import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
@@ -25,6 +22,30 @@ if (!admin.apps.length) {
       privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     }),
   });
+}
+
+const db = admin.firestore();
+
+const PLAN_USD = { pro7: 7, pro25: 25, lifetime: 299 };
+
+async function getUsdToNgnRate() {
+  const res = await fetch('https://open.er-api.com/v6/latest/USD');
+  const data = await res.json();
+  const rate = data?.rates?.NGN;
+  if (!rate) throw new Error('Could not fetch USD->NGN exchange rate');
+  return rate;
+}
+
+// Returns true if the money paid is enough for the tier.
+async function amountCoversTier(tier, amountMajor, currency) {
+  const usd = PLAN_USD[tier];
+  if (currency === 'USD') return amountMajor >= usd * 0.95;
+  if (currency === 'NGN') {
+    const rate = await getUsdToNgnRate();
+    // 10% tolerance: plan/checkout amounts may have been set at an older rate.
+    return amountMajor >= usd * rate * 0.9;
+  }
+  return false;
 }
 
 export default async function handler(req, res) {
@@ -42,7 +63,7 @@ export default async function handler(req, res) {
   }
 
   const { reference, tier } = req.body || {};
-  if (!reference || !['pro7', 'pro25', 'lifetime'].includes(tier)) {
+  if (typeof reference !== 'string' || !reference || !Object.keys(PLAN_USD).includes(tier)) {
     return res.status(400).json({ error: 'Missing or invalid reference/tier' });
   }
 
@@ -50,7 +71,7 @@ export default async function handler(req, res) {
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
     if (!secretKey) return res.status(500).json({ error: 'PAYSTACK_SECRET_KEY missing' });
 
-    // -- VERIFY THE TRANSACTION WITH PAYSTACK (source of truth, never trust the client) --
+    // -- VERIFY WITH PAYSTACK --
     const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
       headers: { Authorization: `Bearer ${secretKey}` },
     });
@@ -60,29 +81,50 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Payment not verified as successful' });
     }
 
-    const meta = verifyData.data.metadata || {};
-    // The uid on the transaction metadata must match the authenticated
-    // caller — otherwise someone could replay a valid reference from a
-    // different account to upgrade their own tier for free.
+    const d = verifyData.data;
+    const meta = d.metadata || {};
     if (meta.uid !== decoded.uid || meta.tier !== tier) {
       return res.status(403).json({ error: 'Payment does not match this account/tier' });
     }
 
+    // -- CHECK THAT THE RIGHT THING WAS PAID FOR --
+    const currency = d.currency;
+    const amountMajor = d.amount / 100;
+
+    if (tier === 'pro7' || tier === 'pro25') {
+      const expectedPlan = tier === 'pro7' ? process.env.PAYSTACK_PLAN_PRO7 : process.env.PAYSTACK_PLAN_PRO25;
+      const paidPlan =
+        (typeof d.plan === 'string' ? d.plan : d.plan?.plan_code) || d.plan_object?.plan_code || null;
+
+      if (expectedPlan) {
+        if (paidPlan !== expectedPlan) {
+          return res.status(403).json({ error: 'Payment was not for this plan' });
+        }
+      } else {
+        console.warn(`PAYSTACK_PLAN_${tier.toUpperCase()} not set — falling back to amount check`);
+        if (!(await amountCoversTier(tier, amountMajor, currency))) {
+          return res.status(402).json({ error: 'Amount paid is too low for this plan' });
+        }
+      }
+    } else {
+      // lifetime: one-time payment, so the amount is the only thing to check
+      if (!(await amountCoversTier(tier, amountMajor, currency))) {
+        return res.status(402).json({ error: 'Amount paid is too low for this plan' });
+      }
+    }
+
+    // -- LOOK UP THE RECURRING SUBSCRIPTION (unchanged) --
     let subscriptionCode = null;
     let subscriptionToken = null;
 
     if (tier === 'pro7' || tier === 'pro25') {
-      // Recurring plan — Paystack auto-creates a subscription on first
-      // charge against a plan. Look it up via the customer code so we can
-      // store it for later cancellation.
-      const customerCode = verifyData.data.customer && verifyData.data.customer.customer_code;
+      const customerCode = d.customer && d.customer.customer_code;
       if (customerCode) {
         const subRes = await fetch(`https://api.paystack.co/subscription?customer=${encodeURIComponent(customerCode)}`, {
           headers: { Authorization: `Bearer ${secretKey}` },
         });
         const subData = await subRes.json();
         if (subData.status && subData.data && subData.data.length) {
-          // Most recent subscription for this customer.
           const sub = subData.data[0];
           subscriptionCode = sub.subscription_code;
           subscriptionToken = sub.email_token;
@@ -90,18 +132,31 @@ export default async function handler(req, res) {
       }
     }
 
-    // -- GRANT THE TIER (Admin SDK bypasses firestore.rules, which is
-    // correct here — this is the one server-verified path allowed to
-    // change it) --
-    const userRef = admin.firestore().collection('users').doc(decoded.uid);
+    // -- GRANT THE TIER, ONCE PER REFERENCE --
+    const userRef = db.collection('users').doc(decoded.uid);
+    const payRef = db.collection('planPayments').doc(reference);
+
     const update = { tier, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
     if (subscriptionCode) update.subscriptionCode = subscriptionCode;
     if (subscriptionToken) update.subscriptionToken = subscriptionToken;
-    await userRef.set(update, { merge: true });
 
-    return res.status(200).json({ success: true, tier, subscriptionCode });
+    const granted = await db.runTransaction(async (t) => {
+      const snap = await t.get(payRef);
+      if (snap.exists) return false; // this reference already granted a tier
+      t.set(payRef, {
+        uid: decoded.uid,
+        tier,
+        amount: amountMajor,
+        currency,
+        createdAt: new Date().toISOString(),
+      });
+      t.set(userRef, update, { merge: true });
+      return true;
+    });
+
+    return res.status(200).json({ success: true, tier, subscriptionCode, alreadyProcessed: !granted });
   } catch (e) {
     console.error('Plan verification error:', e);
-    return res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: 'Plan verification failed' });
   }
 }
