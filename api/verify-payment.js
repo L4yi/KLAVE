@@ -16,6 +16,7 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import { buyerDownloadUrl } from '../lib/cloudinary-sign.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -263,6 +264,9 @@ export default async function handler(req, res) {
       return true;
     });
 
+    // Beat audio is private on Cloudinary: give the buyer a signed full-quality link.
+    const downloadUrl = buyerDownloadUrl(beat, process.env.CLOUDINARY_API_SECRET);
+
     if (isNew) {
       // 4. Referral commission (first time only)
       try {
@@ -278,7 +282,7 @@ export default async function handler(req, res) {
           const buyerSnap = await db.collection('users').doc(buyerId).get();
           buyerEmail = buyerSnap.exists ? buyerSnap.data().email : null;
         }
-        await sendDownloadEmail({ toEmail: buyerEmail, beat, tier, reference });
+        await sendDownloadEmail({ toEmail: buyerEmail, beat: { ...beat, audioUrl: downloadUrl }, tier, reference });
       } catch (emailErr) {
         console.error('Download email failed to send:', emailErr);
       }
@@ -292,7 +296,8 @@ export default async function handler(req, res) {
       tier,
       amountPaidNaira,
       currency,
-      audioUrl: beat.audioUrl,
+      // On a replay, only the actual buyer gets the link back.
+      audioUrl: isNew || (callerUid && callerUid === buyerId) ? downloadUrl : undefined,
     });
   } catch (err) {
     console.error('Payment verification error:', err);
