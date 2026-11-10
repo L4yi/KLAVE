@@ -1,11 +1,22 @@
-const CACHE = 'klave-v2'; // bumped from v1 — forces old cached shell to be purged
+const CACHE = 'klave-v3';
 const ASSETS = [
   '/',
-  '/index.html'
+  '/index.html',
+  '/css/base.css',
+  '/css/layout.css',
+  '/css/screens.css',
+  '/js/firebase-init.js',
+  '/js/data.js',
+  '/js/beat-of-the-week.js',
+  '/js/player.js',
+  '/js/marketplace.js',
+  '/js/producer.js',
+  '/js/auth-profile.js',
+  '/js/app.js'
 ];
 
 self.addEventListener('install', e => {
-  self.skipWaiting(); // don't wait for old tabs to close before activating
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE).then(cache => cache.addAll(ASSETS))
   );
@@ -17,15 +28,12 @@ self.addEventListener('activate', e => {
       caches.keys().then(keys =>
         Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
       ),
-      self.clients.claim() // take control of already-open tabs immediately
+      self.clients.claim()
     ])
   );
 });
 
 self.addEventListener('fetch', e => {
-  // Never cache API calls or the app shell itself — always go to network
-  // for these so a deploy is reflected on the very next reload, not just
-  // "eventually". Cache is purely an offline fallback for other assets.
   const url = e.request.url;
   if (url.includes('/api/') || url.endsWith('/') || url.endsWith('/index.html')) {
     e.respondWith(fetch(e.request, { cache: 'no-store' }));
